@@ -1,0 +1,351 @@
+@import "tailwindcss";
+
+@theme {
+  /* ===== ODYSSEY LANDING — CINEMATIC DARK SPACE PALETTE ===== */
+
+  /* Core backgrounds */
+  --color-ody-bg:           #050817;   /* midnight navy / near-black */
+  --color-ody-surface:      #101A35;   /* deep space blue — cards, panels */
+  --color-ody-surface-warm: #0D1628;   /* slightly warmer alternative surface */
+
+  /* Text */
+  --color-ody-ink:          #E8E7E2;   /* cool off-white — primary text */
+  --color-ody-ink-muted:    #9698A8;   /* muted lavender-grey — body / secondary */
+  --color-ody-ink-dim:      #545669;   /* very dim — placeholders, hints */
+
+  /* Borders */
+  --color-ody-border:        rgba(49, 75, 115, 0.45);  /* muted cosmic blue */
+  --color-ody-border-subtle: rgba(49, 75, 115, 0.22);  /* ultra-thin lines */
+
+  /* Accent — copper & gold */
+  --color-ody-copper:        #B96F5C;  /* warm copper — important accents, active */
+  --color-ody-copper-deep:   #9A5544;  /* darker copper for hover */
+  --color-ody-copper-glow:   rgba(185, 111, 92, 0.18);
+  --color-ody-gold:          #E5B76A;  /* soft celestial gold — highlights, CTAs */
+  --color-ody-gold-deep:     #C9973E;  /* darker gold for hover */
+  --color-ody-gold-glow:     rgba(229, 183, 106, 0.15);
+
+  /* Legacy journey/progress (kept for app components) */
+  --color-ody-journey:       #314B73;  /* muted cosmic blue — borders, inactive */
+  --color-ody-journey-deep:  #243755;
+  --color-ody-journey-light: rgba(49, 75, 115, 0.12);
+  --color-ody-progress:      #E5B76A;  /* repurposed to gold in new direction */
+  --color-ody-achievement:   #B96F5C;  /* repurposed to copper */
+
+  /* Hero-specific */
+  --color-hero-text:         #E8E7E2;
+  --color-hero-text-muted:   #9698A8;
+  --color-hero-text-dim:     #545669;
+  --color-hero-base:         #050817;
+  --color-hero-deep:         #020510;
+
+  /* ===== PRODUCT APP — COSMIC DARK THEME (unchanged) ===== */
+  --color-app-bg:              #03060D;
+  --color-app-surface:         #081321;
+  --color-app-surface-raised:  #0C1A2E;
+  --color-app-surface-overlay: #0F2040;
+
+  --color-app-text:       #E8E2D9;
+  --color-app-text-muted: #7A8FA6;
+  --color-app-text-dim:   #4A5A6E;
+
+  --color-app-border:        rgba(30, 60, 100, 0.35);
+  --color-app-border-subtle: rgba(20, 45, 80, 0.2);
+
+  --color-app-mission:       #B87A55;
+  --color-app-mission-light: rgba(184, 122, 85, 0.15);
+  --color-app-mission-glow:  rgba(184, 122, 85, 0.08);
+  --color-app-gold:          #D6A84F;
+  --color-app-gold-light:    rgba(214, 168, 79, 0.15);
+  --color-app-gold-glow:     rgba(214, 168, 79, 0.08);
+
+  --color-app-success: #4A8C6A;
+  --color-app-danger:  #A83B3B;
+  --color-app-warning: #C8883A;
+
+  /* ===== LEGACY brand tokens (preserved for app components) ===== */
+  --color-brand-bg:               #FCFBF7;
+  --color-brand-surface:          #FFFFFF;
+  --color-brand-muted:            #F4F0E6;
+  --color-brand-text:             #2C2A29;
+  --color-brand-text-muted:       #6B6661;
+  --color-brand-border:           #E6DFD3;
+  --color-brand-accent:           #5F6F52;
+  --color-brand-accent-secondary: #B85C38;
+  --color-brand-success:          #4E6E58;
+  --color-brand-warning:          #E69A3B;
+  --color-brand-danger:           #C24B38;
+  --color-brand-sky:              #E3ECE7;
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+  /* Border Radius */
+  --radius-brand-sm: 6px;
+  --radius-brand:    10px;
+  --radius-brand-lg: 16px;
+
+  /* Shadows */
+  --shadow-brand:      0 4px 20px -2px rgba(44, 42, 41, 0.08), 0 2px 8px -1px rgba(44, 42, 41, 0.04);
+  --shadow-brand-hover: 0 12px 30px -4px rgba(44, 42, 41, 0.12), 0 4px 12px -2px rgba(44, 42, 41, 0.06);
+  --shadow-ody:        0 2px 24px -4px rgba(5, 8, 23, 0.6);
+  --shadow-ody-lg:     0 8px 48px -8px rgba(5, 8, 23, 0.8);
+  --shadow-gold:       0 4px 24px -4px rgba(229, 183, 106, 0.25);
+  --shadow-copper:     0 4px 24px -4px rgba(185, 111, 92, 0.25);
+}
+
+/* ─── Box-sizing ───────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ─── Global base ──────────────────────────────────────────────── */
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-ody-bg);
+  color: var(--color-ody-ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-size: 16px;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  html { font-size: 15px; }
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-ody-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Typography utilities ─────────────────────────────────────── */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+@utility text-h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+@utility text-h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+@utility text-body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@utility text-small {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@utility text-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ─── Landing — Extended Typography ───────────────────────────── */
+@utility text-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 6vw, 5rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+
+@utility text-section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+}
+
+@utility text-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ─── Glass-panel utility ──────────────────────────────────────── */
+@utility glass-panel {
+  background: rgba(16, 26, 53, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(49, 75, 115, 0.35);
+}
+
+@utility glass-panel-light {
+  background: rgba(16, 26, 53, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(49, 75, 115, 0.22);
+}
+
+/* ─── Landing Keyframes ────────────────────────────────────────── */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes landing-fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landing-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes landing-draw-path {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes landing-pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.75; transform: scale(1.15); }
+}
+
+@keyframes landing-scroll-hint {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50%       { opacity: 0.7;  transform: translateY(5px); }
+}
+
+@keyframes landing-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ─── Scroll-reveal ────────────────────────────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-delay-1 { transition-delay: 0.1s; }
+.scroll-reveal-delay-2 { transition-delay: 0.2s; }
+.scroll-reveal-delay-3 { transition-delay: 0.3s; }
+.scroll-reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ─── App-mode body override ───────────────────────────────────── */
+body.app-mode {
+  background-color: var(--color-app-bg);
+  color: var(--color-app-text);
+}
+
+/* ─── Cosmic app animations ────────────────────────────────────── */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
+}
+
+@keyframes cosmic-drift {
+  0%   { transform: translateY(0) translateX(0); }
+  33%  { transform: translateY(-8px) translateX(5px); }
+  66%  { transform: translateY(4px) translateX(-4px); }
+  100% { transform: translateY(0) translateX(0); }
+}
+
+@keyframes focus-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 122, 85, 0.3); }
+  50%       { box-shadow: 0 0 0 8px rgba(184, 122, 85, 0); }
+}
+
+@keyframes timer-tick {
+  0%, 49%   { opacity: 1; }
+  50%, 99%  { opacity: 0.4; }
+  100%      { opacity: 1; }
+}
+
+.star-twinkle { animation: star-twinkle var(--duration, 3s) ease-in-out infinite; }
+.focus-pulse  { animation: focus-pulse 2s ease-in-out infinite; }
+.timer-blink  { animation: timer-tick 1s step-end infinite; }
+
+/* ─── App surface utilities ────────────────────────────────────── */
+.app-card {
+  background-color: var(--color-app-surface);
+  border: 1px solid var(--color-app-border);
+  border-radius: 10px;
+}
+
+.app-card-raised {
+  background-color: var(--color-app-surface-raised);
+  border: 1px solid var(--color-app-border);
+  border-radius: 10px;
+}
+
+.mission-accent { color: var(--color-app-mission); }
+.gold-accent    { color: var(--color-app-gold); }
+
+.app-input {
+  background-color: var(--color-app-bg);
+  border: 1px solid var(--color-app-border);
+  border-radius: 8px;
+  color: var(--color-app-text);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-input:focus {
+  outline: none;
+  border-color: var(--color-app-mission);
+  box-shadow: 0 0 0 3px var(--color-app-mission-glow);
+}
+
+.app-input::placeholder {
+  color: var(--color-app-text-dim);
+}
