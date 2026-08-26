@@ -259,27 +259,64 @@ function CreateMissionPanel({
   onCreated:   (m: Mission) => void;
   onCancel:    () => void;
 }) {
+  const initialTaskId  = prefillInput?.task_id ?? prefillTask?.id ?? '';
   const initialTitle   = prefillInput?.title           ?? prefillTask?.title ?? '';
-  const initialObj     = prefillInput?.objective       ?? '';
-  const initialAction  = prefillInput?.next_action     ?? '';
+  const initialObj     = prefillInput?.objective       ?? (prefillTask ? (prefillTask.description?.trim() || `Complete: ${prefillTask.title}`) : '');
+  const initialAction  = prefillInput?.next_action     ?? (prefillTask ? `Start working on: ${prefillTask.title}` : '');
   const initialMinutes = prefillInput?.planned_minutes
     ? String(prefillInput.planned_minutes)
     : prefillTask?.estimated_minutes ? String(prefillTask.estimated_minutes) : '25';
 
-  const [selectedTaskId, setSelectedTaskId] = useState(prefillTask?.id ?? '');
-  const [title,          setTitle]          = useState(initialTitle);
-  const [objective,      setObjective]      = useState(initialObj);
-  const [nextAction,     setNextAction]     = useState(initialAction);
-  const [plannedMinutes, setPlannedMinutes] = useState(initialMinutes);
-  const [saving,         setSaving]         = useState(false);
-  const [err,            setErr]            = useState<string | null>(null);
+  const [selectedTaskId,   setSelectedTaskId]   = useState(initialTaskId);
+  const [title,            setTitle]            = useState(initialTitle);
+  const [objective,        setObjective]        = useState(initialObj);
+  const [nextAction,       setNextAction]       = useState(initialAction);
+  const [plannedMinutes,   setPlannedMinutes]   = useState(initialMinutes);
+  const [currentAiMission, setCurrentAiMission] = useState<AIMission | null>(aiMission ?? null);
+  const [saving,           setSaving]           = useState(false);
+  const [err,              setErr]              = useState<string | null>(null);
 
   const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
 
   const handleTaskSelect = (id: string) => {
     setSelectedTaskId(id);
+    if (!id) {
+      // Switched to "— No linked task —"
+      if (!initialTaskId) {
+        setTitle(initialTitle);
+        setObjective(initialObj);
+        setNextAction(initialAction);
+        setPlannedMinutes(initialMinutes);
+        setCurrentAiMission(aiMission ?? null);
+      } else {
+        setTitle('');
+        setObjective('');
+        setNextAction('');
+        setPlannedMinutes('25');
+        setCurrentAiMission(null);
+      }
+      return;
+    }
+
+    if (id === initialTaskId && prefillInput) {
+      // Restored the original prefilled/AI-suggested task
+      setTitle(initialTitle);
+      setObjective(initialObj);
+      setNextAction(initialAction);
+      setPlannedMinutes(initialMinutes);
+      setCurrentAiMission(aiMission ?? null);
+      return;
+    }
+
+    // Switched to a different task: derive fresh, synchronized mission content
     const t = tasks.find(x => x.id === id);
-    if (t) { setTitle(t.title); if (t.estimated_minutes) setPlannedMinutes(String(t.estimated_minutes)); }
+    if (t) {
+      setTitle(t.title);
+      setObjective(t.description?.trim() || `Complete: ${t.title}`);
+      setNextAction(`Start working on: ${t.title}`);
+      setPlannedMinutes(t.estimated_minutes ? String(t.estimated_minutes) : '25');
+      setCurrentAiMission(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,7 +348,7 @@ function CreateMissionPanel({
             <h2 className="font-display text-lg" style={{ color: 'var(--color-app-text)' }}>
               {prefillInput ? 'Your next mission' : 'Define Mission'}
             </h2>
-            {aiMission?.aiGenerated && (
+            {currentAiMission?.aiGenerated && (
               <span className="text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
                 style={{ background: 'rgba(184,122,85,0.12)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.3)' }}>
                 AI
@@ -320,16 +357,16 @@ function CreateMissionPanel({
           </div>
           {prefillInput && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>
-              {aiMission?.aiGenerated
+              {currentAiMission?.aiGenerated
                 ? 'Suggested by Odyssey · edit anything before launching.'
                 : 'Based on your chosen approach · edit anything before launching.'}
             </p>
           )}
           {/* AI reasoning insight */}
-          {aiMission?.reasoning && (
+          {currentAiMission?.reasoning && (
             <p className="text-xs mt-2 leading-relaxed"
               style={{ color: 'var(--color-app-text-muted)', fontStyle: 'italic' }}>
-              "{aiMission.reasoning}"
+              "{currentAiMission.reasoning}"
             </p>
           )}
         </div>
@@ -608,9 +645,15 @@ export default function Mission() {
     setPlanScreen('loading_mission');
     const mission = await suggestMissionFromPlan(captureContext!, plan);
     setAiMission(mission);
+
+    // Link the created task corresponding to the first item in the chosen plan
+    const firstItemText = plan.orderedItems[0]?.text?.toLowerCase().trim();
+    const matchedTask = tasks.find(t => t.title.toLowerCase().trim() === firstItemText)
+      ?? tasks.find(t => firstItemText && (firstItemText.includes(t.title.toLowerCase().trim()) || t.title.toLowerCase().trim().includes(firstItemText)));
+
     setPrefillInput({
       title:           mission.title,
-      task_id:         null,
+      task_id:         matchedTask?.id ?? null,
       objective:       mission.objective,
       next_action:     mission.next_action,
       planned_minutes: mission.planned_minutes,
@@ -623,7 +666,8 @@ export default function Mission() {
     setPlanScreen('list');
     setPrefillInput(null);
     setAiMission(null);
-    if (chosenPlan) navigate('/execute', { state: { mission: m, linkedTask: null } });
+    const linked = tasks.find(t => t.id === m.task_id) ?? null;
+    if (chosenPlan) navigate('/execute', { state: { mission: m, linkedTask: linked } });
   };
 
   const handleDeleteMission = async (id: string) => {

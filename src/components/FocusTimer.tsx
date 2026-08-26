@@ -95,59 +95,83 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
 
   return (
     <div
-      className="rounded-xl flex flex-col items-center gap-6"
+      className="rounded-2xl flex flex-col items-center gap-6 relative overflow-hidden"
       style={{
-        padding: prominent ? '2rem' : '1.5rem',
-        backgroundColor: 'var(--color-app-surface)',
-        border: `1px solid ${running ? 'rgba(184,122,85,0.4)' : 'var(--color-app-border)'}`,
-        boxShadow: running ? '0 0 0 1px rgba(184,122,85,0.08)' : 'none',
-        transition: 'border-color 0.3s, box-shadow 0.3s',
+        padding: prominent ? '2.5rem 2rem' : '1.5rem',
+        background: 'radial-gradient(ellipse 90% 80% at 50% 20%, rgba(13,26,48,0.9) 0%, rgba(8,19,33,0.95) 100%)',
+        border: `1px solid ${running ? 'rgba(229,183,106,0.5)' : 'rgba(49,75,115,0.4)'}`,
+        boxShadow: running
+          ? '0 12px 40px -8px rgba(229,183,106,0.25), inset 0 0 20px rgba(184,122,85,0.1)'
+          : '0 8px 32px -8px rgba(3,6,13,0.7)',
+        transition: 'border-color 0.4s, box-shadow 0.4s',
       }}
     >
-      {!prominent && (
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-app-mission)' }}>
-          Focus Session
-        </p>
-      )}
+      {/* Flight Control Telemetry Header */}
+      <div className="flex items-center justify-between w-full border-b pb-3" style={{ borderColor: 'rgba(49,75,115,0.25)' }}>
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{
+              backgroundColor: running ? '#4A8C6A' : isPaused ? '#D6A84F' : 'var(--color-app-mission)',
+              boxShadow: running ? '0 0 8px #4A8C6A' : 'none',
+            }}
+          />
+          <span className="text-[0.65rem] font-mono tracking-[0.18em] uppercase font-bold" style={{ color: 'var(--color-app-mission)' }}>
+            {running ? 'ENGAGED // FLIGHT TELEMETRY ACTIVE' : isPaused ? 'STANDBY // FLIGHT PAUSED' : isCompleted ? 'MISSION ACCOMPLISHED' : 'MISSION CONTROL // READY'}
+          </span>
+        </div>
+        <span className="text-[0.65rem] font-mono" style={{ color: 'var(--color-app-text-dim)' }}>
+          {Math.round(progress * 100)}% COMPLETED
+        </span>
+      </div>
 
-      {/* Ring */}
+      {/* Orbit Ring */}
       <div className="relative" style={{ width: ringSize, height: ringSize }}>
         <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} className="-rotate-90">
+          <defs>
+            <linearGradient id="timerGlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#B87A55" />
+              <stop offset="100%" stopColor="#E5B76A" />
+            </linearGradient>
+          </defs>
           <circle
             cx={ringSize / 2} cy={ringSize / 2} r={ringR}
-            fill="none" stroke="rgba(30,60,100,0.3)"
-            strokeWidth={prominent ? 7 : 6}
+            fill="none" stroke="rgba(30,60,100,0.35)"
+            strokeWidth={prominent ? 6 : 5}
           />
           <circle
             cx={ringSize / 2} cy={ringSize / 2} r={ringR}
             fill="none"
-            stroke={isCompleted ? '#4A8C6A' : '#B87A55'}
-            strokeWidth={prominent ? 7 : 6}
+            stroke={isCompleted ? '#4A8C6A' : 'url(#timerGlowGradient)'}
+            strokeWidth={prominent ? 6.5 : 5.5}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
-            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+            style={{
+              transition: 'stroke-dashoffset 0.5s ease',
+              filter: running ? 'drop-shadow(0 0 6px rgba(229,183,106,0.6))' : 'none',
+            }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className="font-mono font-bold tabular-nums"
             style={{
-              fontSize: prominent ? '2.25rem' : '1.5rem',
-              color: isCompleted ? '#4A8C6A' : 'var(--color-app-text)',
+              fontSize: prominent ? '2.5rem' : '1.6rem',
+              color: isCompleted ? '#4A8C6A' : running ? 'var(--color-app-gold)' : 'var(--color-app-text)',
               letterSpacing: '0.04em',
             }}
           >
             {formatDuration(elapsed)}
           </span>
           <span
-            className="mt-0.5"
+            className="font-mono mt-0.5"
             style={{
-              fontSize: prominent ? '0.8125rem' : '0.75rem',
+              fontSize: prominent ? '0.8rem' : '0.7rem',
               color: 'var(--color-app-text-dim)',
             }}
           >
-            / {formatDuration(plannedSeconds)}
+            TARGET {formatDuration(plannedSeconds)}
           </span>
         </div>
       </div>

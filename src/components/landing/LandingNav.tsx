@@ -70,9 +70,9 @@ export default function LandingNav() {
             </Link>
 
             {/* Primary CTA */}
-            <button
-              onClick={() => scrollToSection('final-cta')}
-              className="ml-3 px-5 py-2.5 text-[0.8125rem] font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200 cursor-pointer border"
+            <Link
+              to="/home"
+              className="ml-3 px-5 py-2.5 text-[0.8125rem] font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200 inline-flex items-center border"
               style={{
                 background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
                 color: '#050817',
@@ -80,16 +80,16 @@ export default function LandingNav() {
                 boxShadow: '0 2px 16px -2px rgba(229, 183, 106, 0.3)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 24px -4px rgba(229, 183, 106, 0.5)';
-                (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.08)';
+                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 24px -4px rgba(229, 183, 106, 0.5)';
+                (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1.08)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 16px -2px rgba(229, 183, 106, 0.3)';
-                (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1)';
+                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 2px 16px -2px rgba(229, 183, 106, 0.3)';
+                (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1)';
               }}
             >
-              Begin your Odyssey
-            </button>
+              Try Odyssey
+            </Link>
           </nav>
 
           {/* Mobile hamburger */}
@@ -150,17 +150,18 @@ export default function LandingNav() {
           >
             Sign in
           </Link>
-          <button
-            onClick={() => scrollToSection('final-cta')}
-            className="mt-3 w-full px-5 py-3 text-sm font-semibold tracking-wide rounded-lg transition-all duration-200 cursor-pointer border-none"
+          <Link
+            to="/home"
+            onClick={() => setMobileOpen(false)}
+            className="mt-3 block text-center w-full px-5 py-3 text-sm font-semibold tracking-wide rounded-lg transition-all duration-200 border-none"
             style={{
               background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
               color: '#050817',
               boxShadow: '0 2px 16px -2px rgba(229, 183, 106, 0.3)',
             }}
           >
-            Begin your Odyssey
-          </button>
+            Try Odyssey
+          </Link>
         </div>
       </div>
     </header>

@@ -65,28 +65,39 @@ export default function FinalCTASection() {
           </p>
 
           {/* CTA */}
-          <Link
-            to="/auth"
-            className="inline-flex items-center px-8 py-4 text-sm font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200"
-            style={{
-              background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
-              color: '#050817',
-              boxShadow: '0 4px 28px -4px rgba(229,183,106,0.35)',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 36px -4px rgba(229,183,106,0.55)';
-              (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1.08)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 28px -4px rgba(229,183,106,0.35)';
-              (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1)';
-            }}
-          >
-            Begin your Odyssey
-            <svg className="ml-2.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/home"
+              className="inline-flex items-center px-8 py-4 text-sm font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
+                color: '#050817',
+                boxShadow: '0 4px 28px -4px rgba(229,183,106,0.35)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 36px -4px rgba(229,183,106,0.55)';
+                (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1.08)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 28px -4px rgba(229,183,106,0.35)';
+                (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1)';
+              }}
+            >
+              Try Odyssey
+              <svg className="ml-2.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+            <Link
+              to="/auth"
+              className="px-6 py-4 text-sm font-medium tracking-wide transition-colors duration-200"
+              style={{ color: 'var(--color-ody-ink-muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-ody-ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-ody-ink-muted)')}
+            >
+              Sign in to save progress →
+            </Link>
+          </div>
 
           {/* Destination marker */}
           <div className="flex justify-center mt-16 md:mt-20">

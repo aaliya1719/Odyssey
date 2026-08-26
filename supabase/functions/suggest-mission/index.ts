@@ -27,89 +27,116 @@ const CORS_HEADERS = {
 // gemini-3.6-flash — current production model as of Aug 2026.
 // gemini-2.5-flash was tried but the API returned 404 for this key.
 // The root cause of the previous 502s was markdown-wrapped JSON from Gemini:
-// the old cleanup regex used ^ anchors that failed when output had a leading newline.
-// Fixed by the robust bracket-extraction below.
-const GEMINI_MODEL    = 'gemini-3.6-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const CANDIDATE_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+];
 
-// ─── Shared Gemini caller ─────────────────────────────────────────────────────
+// ─── Shared Gemini caller with multi-model fallback ───────────────────────────
 
-async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 1200): Promise<{ text: string | null; geminiStatus?: number; geminiError?: string }> {
-  console.log(`[Gemini] calling ${GEMINI_MODEL}, maxTokens=${maxOutputTokens}, promptLen=${prompt.length}`);
+async function callGemini(
+  apiKey: string,
+  prompt: string,
+  maxOutputTokens = 1200,
+): Promise<{ text: string | null; geminiStatus?: number; geminiError?: string; modelUsed?: string }> {
+  let lastStatus = 0;
+  let lastError = 'No models tried';
 
-  let res: Response;
-  try {
-    res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          maxOutputTokens,
-        },
-      }),
-    });
-  } catch (fetchErr) {
-    console.error('[Gemini] fetch() threw:', fetchErr);
-    return { text: null, geminiError: String(fetchErr) };
+  for (const model of CANDIDATE_MODELS) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    console.log(`[Gemini] trying ${model}, maxTokens=${maxOutputTokens}, promptLen=${prompt.length}`);
+
+    let res: Response;
+    try {
+      res = await fetch(`${endpoint}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(7000),
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens,
+          },
+        }),
+      });
+    } catch (fetchErr) {
+      console.error(`[Gemini] ${model} fetch() threw:`, fetchErr);
+      lastError = `${model}: ${String(fetchErr)}`;
+      continue;
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[Gemini] ${model} HTTP ${res.status}:`, errText.slice(0, 300));
+      lastStatus = res.status;
+      lastError = `${model} (HTTP ${res.status}): ${errText.slice(0, 150)}`;
+      // If 429 quota/rate limit or 503 or 404, fallback to next model immediately
+      continue;
+    }
+
+    const data = await res.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      error?: { message?: string; code?: number };
+    };
+
+    if (data?.error) {
+      console.error(`[Gemini] ${model} API-level error:`, JSON.stringify(data.error));
+      lastStatus = 200;
+      lastError = `${model}: ${JSON.stringify(data.error)}`;
+      continue;
+    }
+
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+    if (!raw) {
+      console.error(`[Gemini] ${model} no text in response:`, JSON.stringify(data).slice(0, 300));
+      lastStatus = 200;
+      lastError = `${model}: no_text_in_response`;
+      continue;
+    }
+
+    console.log(`[Gemini] success with ${model}, rawLen=${raw.length}, rawPreview=${raw.slice(0, 120).replace(/\n/g, '\\n')}`);
+
+    // Robust JSON extraction: strip any markdown fencing and find the outermost { } or [ ] pair.
+    const stripped = raw
+      .replace(/^```json\s*/im, '')
+      .replace(/^```\s*/im, '')
+      .replace(/```\s*$/im, '')
+      .trim();
+
+    // Find first { or [ and its matching closing bracket
+    const firstBrace   = stripped.indexOf('{');
+    const firstBracket = stripped.indexOf('[');
+    const start = (firstBrace === -1) ? firstBracket
+                : (firstBracket === -1) ? firstBrace
+                : Math.min(firstBrace, firstBracket);
+
+    if (start === -1) {
+      console.error(`[Gemini] ${model} no JSON object found. raw:`, raw.slice(0, 300));
+      lastStatus = 200;
+      lastError = `${model}: no_json_in_response: ${raw.slice(0, 150)}`;
+      continue;
+    }
+
+    const openChar  = stripped[start];
+    const closeChar = openChar === '{' ? '}' : ']';
+    const lastClose = stripped.lastIndexOf(closeChar);
+
+    if (lastClose === -1 || lastClose <= start) {
+      console.error(`[Gemini] ${model} unmatched brackets. raw:`, raw.slice(0, 300));
+      lastStatus = 200;
+      lastError = `${model}: unmatched_brackets: ${raw.slice(0, 150)}`;
+      continue;
+    }
+
+    const cleaned = stripped.slice(start, lastClose + 1);
+    return { text: cleaned, geminiStatus: 200, modelUsed: model };
   }
 
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error(`[Gemini] HTTP ${res.status}:`, errText.slice(0, 500));
-    return { text: null, geminiStatus: res.status, geminiError: errText.slice(0, 200) };
-  }
-
-  const data = await res.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    error?: { message?: string; code?: number };
-  };
-
-  if (data?.error) {
-    console.error('[Gemini] API-level error:', JSON.stringify(data.error));
-    return { text: null, geminiStatus: 200, geminiError: JSON.stringify(data.error) };
-  }
-
-  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
-  if (!raw) {
-    console.error('[Gemini] No text in response:', JSON.stringify(data).slice(0, 300));
-    return { text: null, geminiStatus: 200, geminiError: 'no_text_in_response' };
-  }
-
-  console.log(`[Gemini] success, rawLen=${raw.length}, rawPreview=${raw.slice(0, 120).replace(/\n/g, '\\n')}`);
-
-  // Robust JSON extraction: strip any markdown fencing and find the outermost { } or [ ] pair.
-  // This handles cases where the model prepends/appends commentary despite responseMimeType:application/json.
-  const stripped = raw
-    .replace(/^```json\s*/im, '')
-    .replace(/^```\s*/im, '')
-    .replace(/```\s*$/im, '')
-    .trim();
-
-  // Find first { or [ and its matching closing bracket
-  const firstBrace  = stripped.indexOf('{');
-  const firstBracket = stripped.indexOf('[');
-  const start = (firstBrace === -1) ? firstBracket
-              : (firstBracket === -1) ? firstBrace
-              : Math.min(firstBrace, firstBracket);
-
-  if (start === -1) {
-    console.error('[Gemini] No JSON object found in response. raw:', raw.slice(0, 300));
-    return { text: null, geminiStatus: 200, geminiError: `no_json_in_response: ${raw.slice(0, 150)}` };
-  }
-
-  const openChar  = stripped[start];
-  const closeChar = openChar === '{' ? '}' : ']';
-  const lastClose = stripped.lastIndexOf(closeChar);
-
-  if (lastClose === -1 || lastClose <= start) {
-    console.error('[Gemini] Unmatched brackets in response. raw:', raw.slice(0, 300));
-    return { text: null, geminiStatus: 200, geminiError: `unmatched_brackets: ${raw.slice(0, 150)}` };
-  }
-
-  const cleaned = stripped.slice(start, lastClose + 1);
-  return { text: cleaned, geminiStatus: 200 };
+  return { text: null, geminiStatus: lastStatus, geminiError: lastError };
 }
 
 // ─── OPERATION: interpret ─────────────────────────────────────────────────────
@@ -516,6 +543,20 @@ Deno.serve(async (req: Request) => {
     }), {
       status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
+  }
+
+  if (operation === 'list_models') {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        status: res.status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: String(err) }), {
+        status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   return new Response(JSON.stringify({ error: `Unknown operation: ${operation ?? '(none)'}` }), {

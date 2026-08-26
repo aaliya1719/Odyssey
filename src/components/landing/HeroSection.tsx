@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function HeroSection() {
   const aircraftRef = useRef<SVGCircleElement>(null);
@@ -205,12 +206,8 @@ export default function HeroSection() {
             style={{ animation: 'landing-fade-up 1s cubic-bezier(0.22,1,0.36,1) 0.6s both' }}
           >
             {/* Primary — gold gradient */}
-            <a
-              href="#final-cta"
-              onClick={e => {
-                e.preventDefault();
-                document.getElementById('final-cta')?.scrollIntoView({ behavior: 'smooth' });
-              }}
+            <Link
+              to="/home"
               className="inline-flex items-center px-7 py-3.5 text-sm font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200"
               style={{
                 background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
@@ -226,11 +223,11 @@ export default function HeroSection() {
                 (e.currentTarget as HTMLAnchorElement).style.filter = 'brightness(1)';
               }}
             >
-              Begin your Odyssey
+              Try Odyssey
               <svg className="ml-2.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </a>
+            </Link>
 
             {/* Secondary — ghost text */}
             <button
