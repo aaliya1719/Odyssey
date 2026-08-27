@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import AtmosphericBackground from '../components/AtmosphericBackground';
 import { useAuth } from '../hooks/useAuth';
 
@@ -54,7 +55,7 @@ export default function RootLayout() {
   }, [isAppRoute]);
 
   // Landing — manages its own layout entirely
-  if (isLanding) return <Outlet />;
+  if (isLanding) return <><Outlet /><Analytics /></>;
 
   // Auth page — minimal dark container
   if (isAuthPage) {
@@ -64,6 +65,7 @@ export default function RootLayout() {
         <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Outlet />
         </main>
+        <Analytics />
       </div>
     );
   }
@@ -193,6 +195,7 @@ export default function RootLayout() {
       <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+      <Analytics />
     </div>
   );
 }
