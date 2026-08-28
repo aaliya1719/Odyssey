@@ -190,9 +190,10 @@ export default function HeroSection() {
 
           {/* Supporting text */}
           <p
-            className="text-lg md:text-xl leading-relaxed max-w-lg mb-10 font-light"
+            className="text-lg md:text-xl leading-relaxed max-w-lg mb-10 font-normal"
             style={{
-              color: 'rgba(232, 231, 226, 0.92)',
+              color: '#FFFFFF',
+              textShadow: '0 2px 12px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.95)',
               animation: 'landing-fade-up 1s cubic-bezier(0.22,1,0.36,1) 0.45s both',
             }}
           >
