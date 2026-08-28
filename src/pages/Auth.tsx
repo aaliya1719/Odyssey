@@ -3,8 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Auth() {
-  const { isAuthenticated, loading: authLoading, signInWithOtp, signInWithGoogle } = useAuth();
+  const { isAuthenticated, loading: authLoading, signUp, signInWithPassword, signInWithGoogle } = useAuth();
   const [email,        setEmail]        = useState('');
+  const [password,     setPassword]     = useState('');
+  const [authMode,     setAuthMode]     = useState<'signin' | 'signup'>('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
@@ -61,18 +63,22 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
     try {
-      await signInWithOtp(email.trim());
-      setSuccess(true);
+      if (authMode === 'signup') {
+        const { session } = await signUp(email.trim(), password);
+        setSuccess(!session);
+      } else {
+        await signInWithPassword(email.trim(), password);
+      }
     } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Failed to send magic link. Please try again.'
+          : `Failed to ${authMode === 'signup' ? 'create your account' : 'sign in'}. Please try again.`
       );
     } finally {
       setIsSubmitting(false);
@@ -118,7 +124,7 @@ export default function Auth() {
             Begin Your Odyssey
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-            Enter your email to receive a passwordless magic link.
+            {authMode === 'signup' ? 'Create your account with email and password.' : 'Sign in with your email and password.'}
           </p>
         </div>
 
@@ -145,17 +151,15 @@ export default function Auth() {
             <h3 className="font-semibold mb-1" style={{ color: 'var(--color-app-text)' }}>
               Check your inbox
             </h3>
-            <p className="text-sm mb-5" style={{ color: 'var(--color-app-text-muted)' }}>
-              We sent a magic link to{' '}
-              <strong style={{ color: 'var(--color-app-text)' }}>{email}</strong>.
-              Click it to sign in.
+              <p className="text-sm mb-5" style={{ color: 'var(--color-app-text-muted)' }}>
+              Your account was created. You can now sign in with your password.
             </p>
             <button
-              onClick={() => { setSuccess(false); setEmail(''); }}
+              onClick={() => { setSuccess(false); setPassword(''); setAuthMode('signin'); }}
               className="text-xs font-medium cursor-pointer bg-transparent border-none underline underline-offset-2"
               style={{ color: 'var(--color-app-mission)' }}
             >
-              Use a different email address
+              Sign in instead
             </button>
           </div>
         ) : (
@@ -194,19 +198,41 @@ export default function Auth() {
               />
             </div>
 
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold uppercase tracking-wider mb-2"
+                style={{ color: 'var(--color-app-text-muted)' }}
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                disabled={isSubmitting}
+                className="app-input w-full"
+                autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+              />
+            </div>
+
             <button
               type="submit"
-              disabled={isSubmitting || isGoogleSubmitting || !email.trim()}
+              disabled={isSubmitting || isGoogleSubmitting || !email.trim() || !password}
               className="w-full py-3 px-4 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border-none disabled:opacity-50 disabled:pointer-events-none"
               style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Sending…</span>
+                  <span>{authMode === 'signup' ? 'Creating account…' : 'Signing in…'}</span>
                 </>
               ) : (
-                'Send Magic Link'
+                authMode === 'signup' ? 'Create account' : 'Sign in'
               )}
             </button>
 
@@ -239,6 +265,18 @@ export default function Auth() {
               )}
               <span>{isGoogleSubmitting ? 'Redirecting…' : 'Continue with Google'}</span>
             </button>
+
+            <p className="text-center text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
+              {authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}{' '}
+              <button
+                type="button"
+                onClick={() => { setAuthMode(authMode === 'signup' ? 'signin' : 'signup'); setError(null); setSuccess(false); }}
+                className="font-medium underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                style={{ color: 'var(--color-app-mission)' }}
+              >
+                {authMode === 'signup' ? 'Sign in' : 'Create one'}
+              </button>
+            </p>
           </form>
         )}
       </div>

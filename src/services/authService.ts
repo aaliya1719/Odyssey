@@ -25,6 +25,18 @@ export const authService = {
     return data;
   },
 
+  async signUp(email: string, password: string) {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
+  },
+
+  async signInWithPassword(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  },
+
   /**
    * Start Google OAuth and return to the app after Supabase completes sign-in.
    */
