@@ -152,15 +152,15 @@ export default function Execute() {
           style={{ color: 'var(--color-app-text-dim)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
-        >Capture</Link>
+        >Step 1 — Capture</Link>
         <span style={{ opacity: 0.35 }}>›</span>
         <Link to="/mission" className="hover:underline"
           style={{ color: 'var(--color-app-text-dim)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
-        >Plan</Link>
+        >Step 2 — Plan</Link>
         <span style={{ opacity: 0.35 }}>›</span>
-        <span style={{ color: 'var(--color-app-mission)' }}>Execute</span>
+        <span style={{ color: 'var(--color-app-mission)' }}>Step 3 — Execute</span>
       </nav>
 
       {/* ── Mission Control Console ── */}
@@ -266,7 +266,7 @@ export default function Execute() {
               ✓ Mission Accomplished
             </p>
             <p className="text-xs" style={{ color: 'var(--color-app-text-muted)' }}>
-              +{xpReward} XP earned — your Journey route has advanced.
+              +{xpReward} XP earned — your progress has been logged to your Journey.
             </p>
           </div>
         )}
@@ -512,7 +512,7 @@ export default function Execute() {
           >
             <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
               {isCompleted
-                ? 'Journey progress updated. Head to Journey to see your new position.'
+                ? 'Work done. Head to Journey to see how far you’ve come.'
                 : 'Return to Plan to regroup.'}
             </p>
             <div className="flex gap-3 flex-shrink-0">
@@ -523,7 +523,7 @@ export default function Execute() {
                 onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text)')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
               >
-                Back to Plan
+                {isCompleted ? 'New Mission' : 'Back to Plan'}
               </button>
               {isCompleted && (
                 <button
@@ -534,7 +534,7 @@ export default function Execute() {
                     color: '#050817',
                   }}
                 >
-                  View Journey →
+                  View My Journey →
                 </button>
               )}
             </div>

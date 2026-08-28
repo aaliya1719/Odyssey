@@ -31,7 +31,7 @@ export default function AtmosphericBackground() {
 
   return (
     <div
-      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none"
+      className="atmospheric-background fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none"
       style={{ backgroundColor: 'var(--color-app-bg)' }}
     >
       {/* Deep space gradient layers */}

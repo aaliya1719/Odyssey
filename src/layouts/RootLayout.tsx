@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import AtmosphericBackground from '../components/AtmosphericBackground';
 import { useAuth } from '../hooks/useAuth';
+import ThemeToggle from '../components/ThemeToggle';
 
 const NAV_LINKS = [
   { to: '/home', label: 'Capture', icon: (
@@ -89,7 +90,7 @@ export default function RootLayout() {
 
       {/* Top navigation */}
       <header
-        className="sticky top-0 z-50 backdrop-blur-md"
+        className="app-navigation sticky top-0 z-50 backdrop-blur-md"
         style={{
           backgroundColor: 'rgba(8,19,33,0.85)',
           borderBottom: '1px solid var(--color-app-border)',
@@ -136,6 +137,7 @@ export default function RootLayout() {
 
             {/* Right side: auth-aware user area */}
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {/* Auth loading — show nothing to avoid flicker */}
               {authLoading ? null : isAuthenticated ? (
                 <>

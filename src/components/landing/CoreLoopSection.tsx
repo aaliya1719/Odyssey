@@ -37,7 +37,7 @@ export default function CoreLoopSection() {
   return (
     <section
       id="how-it-works"
-      className="relative w-full overflow-hidden"
+      className="landing-light-section relative w-full overflow-hidden"
       style={{ background: 'rgba(5, 8, 23, 0.82)' }}
     >
       {/* Subtle top separator */}
@@ -48,7 +48,7 @@ export default function CoreLoopSection() {
 
       {/* Deep-space ambient glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[40vh] rounded-full blur-3xl pointer-events-none"
+        className="landing-atmosphere absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[40vh] rounded-full blur-3xl pointer-events-none"
         style={{ background: 'radial-gradient(ellipse, rgba(16,26,53,0.8) 0%, transparent 70%)', opacity: 0.6 }}
       />
 

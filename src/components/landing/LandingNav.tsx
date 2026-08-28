@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import ThemeToggle from '../ThemeToggle';
 
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -71,7 +72,7 @@ export default function LandingNav() {
 
             {/* Primary CTA */}
             <Link
-              to="/home"
+              to="/auth"
               className="ml-3 px-5 py-2.5 text-[0.8125rem] font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200 inline-flex items-center border"
               style={{
                 background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
@@ -90,6 +91,7 @@ export default function LandingNav() {
             >
               Try Odyssey
             </Link>
+            <ThemeToggle />
           </nav>
 
           {/* Mobile hamburger */}
@@ -151,7 +153,7 @@ export default function LandingNav() {
             Sign in
           </Link>
           <Link
-            to="/home"
+            to="/auth"
             onClick={() => setMobileOpen(false)}
             className="mt-3 block text-center w-full px-5 py-3 text-sm font-semibold tracking-wide rounded-lg transition-all duration-200 border-none"
             style={{
@@ -162,6 +164,9 @@ export default function LandingNav() {
           >
             Try Odyssey
           </Link>
+          <div className="mt-4 flex justify-end">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>

@@ -12,7 +12,7 @@ export default function Landing() {
   return (
     <div
       ref={scrollRef}
-      className="w-full relative"
+      className="landing-page w-full relative"
       style={{
         overflowX: 'hidden',
         backgroundColor: 'var(--color-ody-bg)',

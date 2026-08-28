@@ -3,9 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Auth() {
-  const { isAuthenticated, loading: authLoading, signInWithOtp } = useAuth();
+  const { isAuthenticated, loading: authLoading, signInWithOtp, signInWithGoogle } = useAuth();
   const [email,        setEmail]        = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [success,      setSuccess]      = useState(false);
 
@@ -58,6 +59,21 @@ export default function Auth() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleSubmitting(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign in with Google. Please try again.'
+      );
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -163,7 +179,7 @@ export default function Auth() {
 
             <button
               type="submit"
-              disabled={isSubmitting || !email.trim()}
+              disabled={isSubmitting || isGoogleSubmitting || !email.trim()}
               className="w-full py-3 px-4 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border-none disabled:opacity-50 disabled:pointer-events-none"
               style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
             >
@@ -175,6 +191,36 @@ export default function Auth() {
               ) : (
                 'Send Magic Link'
               )}
+            </button>
+
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-app-border)' }} />
+              <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>or</span>
+              <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-app-border)' }} />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isSubmitting || isGoogleSubmitting}
+              className="w-full py-3 px-4 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border disabled:opacity-50 disabled:pointer-events-none"
+              style={{
+                backgroundColor: 'var(--color-app-surface)',
+                borderColor: 'var(--color-app-border)',
+                color: 'var(--color-app-text)',
+              }}
+            >
+              {isGoogleSubmitting ? (
+                <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} />
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.26Z" />
+                  <path fill="#34A853" d="M12 21.67c2.63 0 4.84-.87 6.46-2.36l-3.14-2.45c-.87.58-1.98.92-3.32.92-2.55 0-4.71-1.72-5.49-4.03H3.27v2.53A9.75 9.75 0 0 0 12 21.67Z" />
+                  <path fill="#FBBC05" d="M6.51 13.75A5.86 5.86 0 0 1 6.2 12c0-.61.11-1.2.31-1.75V7.72H3.27A9.76 9.76 0 0 0 2.25 12c0 1.57.38 3.06 1.02 4.28l3.24-2.53Z" />
+                  <path fill="#EA4335" d="M12 6.22c1.43 0 2.71.49 3.73 1.46l2.8-2.8C16.84 3.3 14.63 2.33 12 2.33a9.75 9.75 0 0 0-8.73 5.39l3.24 2.53c.78-2.31 2.94-4.03 5.49-4.03Z" />
+                </svg>
+              )}
+              <span>{isGoogleSubmitting ? 'Redirecting…' : 'Continue with Google'}</span>
             </button>
           </form>
         )}

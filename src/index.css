@@ -93,6 +93,212 @@
   --shadow-ody-lg:     0 8px 48px -8px rgba(5, 8, 23, 0.8);
   --shadow-gold:       0 4px 24px -4px rgba(229, 183, 106, 0.25);
   --shadow-copper:     0 4px 24px -4px rgba(185, 111, 92, 0.25);
+  --color-theme-toggle-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* ===== LIGHT THEME SYSTEM =====
+   Dark values above are intentionally untouched. Light mode is a separate
+   surface system, with its own canvas, type, borders, and tonal hierarchy. */
+/* ===== LIGHT THEME SYSTEM =====
+   Cohesive exploration palette: Pale Sky → Mist → Soft Sage → Pale Teal → Soft Lavender / Slate Blue
+   with Terracotta and Celestial Gold accents. Zero pink/blush tones. */
+[data-theme='light'] {
+  --light-bg: #E6ECEB;               /* Mist */
+  --light-sky: #DCE7E8;              /* Pale sky */
+  --light-sage: #DDE6DC;             /* Sage */
+  --light-teal: #D8E5E3;             /* Pale muted teal */
+  --light-lavender: #DFE3EC;         /* Soft muted lavender */
+  --light-blue: #DCE4EC;             /* Pale slate blue */
+  --light-navy: #26384A;             /* Deep navy */
+  --light-text-secondary: #5D6D83;    /* Muted slate navy */
+  --light-text-muted: #78879A;       /* Subtle muted tone */
+  --light-terracotta: #C98268;       /* Terracotta */
+  --light-gold: #D5A653;             /* Gold */
+  --light-border: rgba(38, 56, 74, 0.12);
+  --light-border-subtle: rgba(38, 56, 74, 0.07);
+
+  --color-ody-bg: var(--light-bg);
+  --color-ody-surface: var(--light-teal);
+  --color-ody-surface-warm: var(--light-sage);
+  --color-ody-ink: var(--light-navy);
+  --color-ody-ink-muted: var(--light-text-secondary);
+  --color-ody-ink-dim: var(--light-text-muted);
+  --color-ody-border: var(--light-border);
+  --color-ody-border-subtle: var(--light-border-subtle);
+  --color-ody-copper: var(--light-terracotta);
+  --color-ody-copper-deep: #B36D55;
+  --color-ody-copper-glow: rgba(201, 130, 104, 0.16);
+  --color-ody-gold: var(--light-gold);
+  --color-ody-gold-deep: #BA8E3E;
+  --color-ody-gold-glow: rgba(213, 166, 83, 0.18);
+  --color-ody-journey: #526B89;
+  --color-ody-journey-deep: #3A526E;
+  --color-ody-journey-light: var(--light-sky);
+  --color-ody-progress: #5F7D67;
+  --color-ody-achievement: var(--light-gold);
+
+  --color-app-bg: var(--light-bg);
+  --color-app-surface: var(--light-teal);
+  --color-app-surface-raised: var(--light-blue);
+  --color-app-surface-overlay: var(--light-sky);
+  --color-app-text: var(--light-navy);
+  --color-app-text-muted: var(--light-text-secondary);
+  --color-app-text-dim: var(--light-text-muted);
+  --color-app-border: rgba(38, 56, 74, 0.14);
+  --color-app-border-subtle: rgba(38, 56, 74, 0.08);
+  --color-app-mission: var(--light-terracotta);
+  --color-app-mission-light: rgba(201, 130, 104, 0.14);
+  --color-app-mission-glow: rgba(201, 130, 104, 0.08);
+  --color-app-gold: var(--light-gold);
+  --color-app-gold-light: rgba(213, 166, 83, 0.15);
+  --color-app-gold-glow: rgba(213, 166, 83, 0.08);
+  --color-app-success: #5F7D67;
+  --color-app-warning: #BA8E3E;
+  --color-theme-toggle-bg: rgba(230, 236, 235, 0.85);
+}
+
+[data-theme='light'] body,
+[data-theme='light'] body.app-mode {
+  background: var(--light-bg);
+  color: var(--light-navy);
+}
+
+/* Landing: image remains untouched; all surrounding atmosphere becomes paper. */
+[data-theme='light'] .landing-page {
+  background: var(--light-bg) !important;
+}
+
+[data-theme='light'] .landing-page > canvas,
+[data-theme='light'] .landing-page > .fixed {
+  display: none;
+}
+
+[data-theme='light'] .hero-edge-overlays {
+  display: none;
+}
+
+[data-theme='light'] .hero-supporting-text {
+  color: #FFFFFF !important;
+  text-shadow: none !important;
+}
+
+/* Landing sections: Continuous journey through landscapes: sky → mist → sage → teal → lavender/blue */
+
+/* Section 1: How it works / Core Loop (Mist → Sage) */
+[data-theme='light'] #how-it-works {
+  background: linear-gradient(180deg, #E6ECEB 0%, #E0E8E2 45%, #DDE6DC 100%) !important;
+  color: var(--light-navy);
+}
+
+/* Section 2: Experience (Sage → Pale Teal → Pale Blue) */
+[data-theme='light'] #how-it-works + .landing-light-section {
+  background: linear-gradient(180deg, #DDE6DC 0%, #D8E5E3 50%, #DCE4EC 100%) !important;
+  color: var(--light-navy);
+}
+
+/* Section 3: Final CTA (Pale Blue → Soft Lavender) */
+[data-theme='light'] #final-cta {
+  background: linear-gradient(180deg, #DCE4EC 0%, #DEE3EC 50%, #E3E7EE 100%) !important;
+  border-top: 1px solid rgba(38, 56, 74, 0.08);
+  color: var(--light-navy);
+}
+
+[data-theme='light'] .landing-atmosphere {
+  display: none;
+}
+
+/* Navbar: translucent warm mist / ivory with soft backdrop blur */
+[data-theme='light'] #landing-nav {
+  background: rgba(242, 246, 245, 0.72) !important;
+  border-color: rgba(38, 56, 74, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(38, 56, 74, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+[data-theme='light'] #landing-nav a,
+[data-theme='light'] #landing-nav button {
+  color: var(--light-text-secondary);
+}
+
+[data-theme='light'] #landing-nav a:first-child {
+  color: var(--light-navy);
+}
+
+[data-theme='light'] #landing-nav [style*='linear-gradient'] {
+  background: linear-gradient(135deg, var(--light-terracotta) 0%, var(--light-gold) 100%) !important;
+  color: #26384A !important;
+  box-shadow: 0 4px 14px rgba(213, 166, 83, 0.22) !important;
+}
+
+[data-theme='light'] #landing-nav .md\:hidden > div {
+  background: rgba(242, 246, 245, 0.95) !important;
+  border-color: rgba(38, 56, 74, 0.08) !important;
+}
+
+/* Glass panels & cards on landing sections: muted pale mist/teal/sage surfaces */
+[data-theme='light'] .landing-light-section [style*='rgba(16,26,53'],
+[data-theme='light'] .landing-light-section [style*='rgba(16, 26, 53'] {
+  background: rgba(232, 240, 240, 0.6) !important;
+  border-color: rgba(38, 56, 74, 0.1) !important;
+  box-shadow: 0 4px 18px -2px rgba(38, 56, 74, 0.05) !important;
+}
+
+/* Step node circles */
+[data-theme='light'] .landing-light-section [style*='radial-gradient(circle'] {
+  background: rgba(235, 242, 242, 0.82) !important;
+  border-color: rgba(38, 56, 74, 0.15) !important;
+}
+
+/* Connecting rail gradient: slate navy → terracotta → gold */
+[data-theme='light'] .landing-light-section [style*='linear-gradient(90deg, rgba(150,152,168'],
+[data-theme='light'] .landing-light-section [style*='linear-gradient(180deg, rgba(150,152,168'] {
+  background: linear-gradient(90deg, rgba(93, 109, 131, 0.3) 0%, rgba(201, 130, 104, 0.45) 50%, rgba(213, 166, 83, 0.55) 100%) !important;
+}
+
+/* App navigation & cards */
+[data-theme='light'] .atmospheric-background {
+  display: none;
+}
+
+[data-theme='light'] .app-navigation {
+  background: rgba(240, 245, 244, 0.85) !important;
+  border-bottom-color: rgba(38, 56, 74, 0.1) !important;
+  box-shadow: 0 3px 14px rgba(38, 56, 74, 0.04);
+}
+
+[data-theme='light'] .app-card,
+[data-theme='light'] .app-card-raised {
+  background: rgba(230, 238, 237, 0.55);
+  border-color: rgba(38, 56, 74, 0.1);
+  box-shadow: 0 4px 16px rgba(38, 56, 74, 0.04);
+}
+
+[data-theme='light'] .app-input {
+  background: rgba(242, 246, 245, 0.75);
+  border-color: rgba(38, 56, 74, 0.12);
+  color: var(--light-navy);
+}
+
+/* Remaining legacy inline surfaces in app views. */
+[data-theme='light'] body.app-mode [style*='rgba(8,19,33'],
+[data-theme='light'] body.app-mode [style*='rgba(8, 19, 33'],
+[data-theme='light'] body.app-mode [style*='rgba(5,8,23'],
+[data-theme='light'] body.app-mode [style*='rgba(5, 8, 23'],
+[data-theme='light'] body.app-mode [style*='rgba(13,26,48'],
+[data-theme='light'] body.app-mode [style*='rgba(13, 26, 48'] {
+  background: var(--light-surface) !important;
+  background-color: var(--light-surface) !important;
+}
+
+[data-theme='light'] body.app-mode [style*='rgba(30,60,100'],
+[data-theme='light'] body.app-mode [style*='rgba(49,75,115'] {
+  border-color: var(--light-border) !important;
+}
+
+[data-theme='light'] body.app-mode [style*='#E8E2D9'],
+[data-theme='light'] body.app-mode [style*='#E8E7E2'] {
+  color: var(--light-text) !important;
 }
 
 /* ─── Box-sizing ───────────────────────────────────────────────── */

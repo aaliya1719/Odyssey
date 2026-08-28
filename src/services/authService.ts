@@ -31,6 +31,22 @@ export const authService = {
   },
 
   /**
+   * Start Google OAuth and return to the app after Supabase completes sign-in.
+   */
+  async signInWithGoogle() {
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}/auth`
+      : undefined;
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
    * Verify a 6-digit OTP token (fallback for token-based verification).
    */
   async verifyOtp(email: string, token: string) {

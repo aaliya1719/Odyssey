@@ -38,6 +38,7 @@ export function useAuth() {
     // Methods are bound to the service object to preserve 'this' context when
     // destructured and called directly by consumers.
     signInWithOtp: authService.signInWithOtp.bind(authService),
+    signInWithGoogle: authService.signInWithGoogle.bind(authService),
     verifyOtp:     authService.verifyOtp.bind(authService),
     signOut:       authService.signOut.bind(authService),
   };

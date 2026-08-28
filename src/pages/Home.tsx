@@ -45,6 +45,101 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   const [horizon,           setHorizon]            = useState<PlanHorizon>('today');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // ── Speech-to-text state ───────────────────────────────────────────────────
+  const [isListening,       setIsListening]       = useState(false);
+  const [speechError,       setSpeechError]       = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Check Web Speech API availability
+  const isSpeechSupported = typeof window !== 'undefined' && Boolean(
+    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  );
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+      setIsListening(false);
+      return;
+    }
+
+    if (!isSpeechSupported) return;
+
+    setSpeechError(null);
+    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognitionClass();
+    recognitionRef.current = recognition;
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSpeechError(null);
+    };
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalChunk = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalChunk += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalChunk) {
+        setRawInput(prev => {
+          const separator = prev.length > 0 && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '';
+          const next = prev + separator + finalChunk.trim();
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.style.height = 'auto';
+              textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+            }
+          }, 0);
+          return next;
+        });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setSpeechError('Microphone access denied. Please check your browser settings.');
+      } else if (event.error === 'no-speech') {
+        // Ignored or harmless timeout
+      } else {
+        setSpeechError(`Voice input error: ${event.error}`);
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (err: any) {
+      console.warn('Error starting speech recognition:', err);
+      setSpeechError('Could not start voice input.');
+      setIsListening(false);
+    }
+  };
+
   const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRawInput(e.target.value);
     const el = e.target;
@@ -71,6 +166,10 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   };
 
   const submit = () => {
+    if (isListening && recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      setIsListening(false);
+    }
     if (!rawInput.trim()) return;
     onInterpret({
       rawInput:         rawInput.trim(),
@@ -98,28 +197,82 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
       className="rounded-xl overflow-hidden"
       style={{
         background:  'rgba(8, 19, 33, 0.85)',
-        border:      '1px solid rgba(30, 60, 100, 0.45)',
-        boxShadow:   '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
+        border:      isListening ? '1px solid rgba(184, 122, 85, 0.7)' : '1px solid rgba(30, 60, 100, 0.45)',
+        boxShadow:   isListening ? '0 0 16px -2px rgba(184, 122, 85, 0.3)' : '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
+        transition:  'border-color 0.3s ease, box-shadow 0.3s ease',
       }}
     >
       {/* Brain dump */}
-      <textarea
-        ref={textareaRef}
-        value={rawInput}
-        onChange={autoResize}
-        onKeyDown={handleKeyDown}
-        placeholder="What's on your mind? Dump it all here — assignments, deadlines, goals, anything…"
-        rows={4}
-        className="w-full bg-transparent resize-none px-5 pt-5 pb-3 text-base leading-relaxed focus:outline-none"
-        style={{
-          color:       'var(--color-app-text)',
-          caretColor:  'var(--color-app-mission)',
-          fontFamily:  'var(--font-sans)',
-          minHeight:   '5.5rem',
-        }}
-        autoFocus
-        disabled={interpreting}
-      />
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={rawInput}
+          onChange={autoResize}
+          onKeyDown={handleKeyDown}
+          placeholder="What's on your mind? Dump it all here — assignments, deadlines, goals, anything…"
+          rows={4}
+          className="w-full bg-transparent resize-none pl-5 pr-14 pt-5 pb-3 text-base leading-relaxed focus:outline-none"
+          style={{
+            color:       'var(--color-app-text)',
+            caretColor:  'var(--color-app-mission)',
+            fontFamily:  'var(--font-sans)',
+            minHeight:   '5.5rem',
+          }}
+          autoFocus
+          disabled={interpreting}
+        />
+
+        {/* Microphone action button inside textarea container */}
+        {isSpeechSupported && (
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {isListening && (
+              <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: 'rgba(184, 122, 85, 0.15)',
+                  color: 'var(--color-app-mission)',
+                  border: '1px solid rgba(184, 122, 85, 0.3)',
+                }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B87A55] animate-pulse" />
+                Listening…
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={interpreting}
+              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              title={isListening ? 'Stop listening' : 'Dictate with voice'}
+              className="p-2 rounded-lg cursor-pointer border transition-all flex items-center justify-center"
+              style={{
+                backgroundColor: isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.3)',
+                borderColor:     isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.5)',
+                color:           isListening ? '#fff' : 'var(--color-app-text-muted)',
+                boxShadow:       isListening ? '0 0 10px rgba(184, 122, 85, 0.5)' : 'none',
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V23M8 23h8" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Voice input error / notice */}
+      {speechError && (
+        <div className="mx-5 mb-2 px-3 py-1.5 rounded-lg text-xs flex items-center justify-between"
+          style={{ background: 'rgba(168,59,59,0.12)', border: '1px solid rgba(168,59,59,0.25)', color: '#E07070' }}>
+          <span>{speechError}</span>
+          <button
+            type="button"
+            onClick={() => setSpeechError(null)}
+            className="text-xs bg-transparent border-none cursor-pointer ml-2"
+            style={{ color: '#E07070' }}
+          >×</button>
+        </div>
+      )}
 
       {/* Structured context */}
       <div
@@ -279,14 +432,14 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
           {interpreting ? (
             <>
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Interpreting…
+              Analysing…
             </>
           ) : (
             <>
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-              Interpret
+              Find My Next Move
             </>
           )}
         </button>
@@ -437,7 +590,7 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
           style={{ borderTop: '1px solid rgba(30, 60, 100, 0.3)' }}
         >
           <p className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
-            Confirm to save tasks and choose your plan.
+            Looks right? Save these and Odyssey will pick your first mission.
           </p>
           <button
             onClick={handleConfirm}
@@ -452,7 +605,7 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
               </>
             ) : (
               <>
-                Save &amp; choose plan
+                Save &amp; Plan My Mission
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
@@ -629,13 +782,13 @@ function TaskRow({
         {!isCompleted && (
           <button
             onClick={() => onLaunchMission(task)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border-none opacity-0 group-hover:opacity-100"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border-none"
             style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.2)' }}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
-            Plan
+            Start Mission
           </button>
         )}
         <button
@@ -806,13 +959,13 @@ export default function Home() {
       <div className="mb-7">
         <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-2"
           style={{ color: 'var(--color-app-mission)' }}>
-          Capture
+          Step 1 — Capture
         </p>
         <h1 className="font-display text-3xl leading-tight" style={{ color: 'var(--color-app-text)' }}>
           {displayName ? `What's on your mind, ${displayName}?` : "What's on your mind?"}
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--color-app-text-muted)' }}>
-          Tell Odyssey what matters. It will help you make sense of it.
+          Dump everything here — tasks, deadlines, goals, anything weighing on you. Odyssey will sort it out and tell you what to do next.
         </p>
       </div>
 
@@ -977,6 +1130,16 @@ export default function Home() {
           <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
           <button onClick={loadTasks} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
             style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
+        </div>
+      ) : tasks.length === 0 && screen === 'capture' ? (
+        <div className="rounded-xl px-5 py-6 text-center"
+          style={{ background: 'rgba(8,19,33,0.5)', border: '1px dashed rgba(30,60,100,0.4)' }}>
+          <p className="text-sm mb-1" style={{ color: 'var(--color-app-text-muted)' }}>
+            Start by typing what's on your mind above.
+          </p>
+          <p className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
+            No special format needed — just write like you'd tell a friend.
+          </p>
         </div>
       ) : tasks.length === 0 ? null : (
         <>

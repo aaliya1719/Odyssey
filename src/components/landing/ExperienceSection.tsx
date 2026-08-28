@@ -73,12 +73,12 @@ const steps = [
 export default function ExperienceSection() {
   return (
     <section
-      className="relative w-full overflow-hidden"
+      className="landing-light-section relative w-full overflow-hidden"
       style={{ background: 'rgba(13, 22, 40, 0.88)' }}
     >
       {/* Atmospheric depth gradient */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="landing-atmosphere absolute inset-0 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(16,26,53,0.4) 0%, transparent 70%)',
         }}

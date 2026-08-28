@@ -8,6 +8,7 @@ import Mission from './pages/Mission';
 import Execute from './pages/Execute';
 import Journey from './pages/Journey';
 import Odyssey from './pages/Odyssey';
+import { ThemeProvider } from './hooks/useTheme';
 
 // ProtectedRoute is no longer used for core routes — the full Odyssey experience
 // is accessible without authentication. Supabase-backed persistence is used when
@@ -32,9 +33,9 @@ const router = createBrowserRouter([
 
 export default function App() {
   return (
-    <>
+    <ThemeProvider>
       <RouterProvider router={router} />
       <Analytics />
-    </>
+    </ThemeProvider>
   );
 }

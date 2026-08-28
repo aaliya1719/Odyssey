@@ -569,7 +569,7 @@ function MissionCard({
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653z" />
               </svg>
-              {mission.status === 'paused' ? 'Resume Execution' : 'Execute'}
+              {mission.status === 'paused' ? 'Resume' : mission.status === 'active' ? 'Continue Executing' : 'Start Executing'}
             </button>
           </div>
         )}
@@ -702,17 +702,17 @@ export default function Mission() {
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-2"
             style={{ color: 'var(--color-app-mission)' }}>
-            Plan
+            Step 2 — Plan
           </p>
           <h1 className="font-display text-3xl" style={{ color: 'var(--color-app-text)' }}>
-            Missions
+            Your Next Move
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-app-text-muted)' }}>
             {planScreen === 'choose_plan'
-              ? 'Choose how to approach your work.'
+              ? 'Odyssey has turned your input into three approaches. Pick the one that fits best.'
               : planScreen === 'create_mission'
-              ? 'Review and launch your next mission.'
-              : 'Define the mission. Then execute it.'}
+              ? 'A Mission is one focused block of work. Review the details and launch it when ready.'
+              : 'Each Mission is one focused block of work. Launch one to start executing.'}
           </p>
         </div>
         {planScreen === 'list' && (
@@ -802,7 +802,7 @@ export default function Mission() {
           </div>
           <h3 className="font-display text-xl mb-2" style={{ color: 'var(--color-app-text)' }}>No missions yet</h3>
           <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: 'var(--color-app-text-muted)' }}>
-            Start from Capture to let Odyssey build a plan, or create a mission directly.
+            A Mission is a short, focused block of work. Go back to Capture to let Odyssey suggest one, or create one here.
           </p>
           <button
             onClick={() => { setPlanScreen('create_mission'); setPrefillInput(null); }}

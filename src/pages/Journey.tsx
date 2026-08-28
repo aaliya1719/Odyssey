@@ -3,6 +3,7 @@ import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
 import type { Task, Mission, FocusSession } from '../types/database';
+import { useTheme } from '../hooks/useTheme';
 
 // ─── Journey Checkpoint Definitions ─────────────────────────────────────────
 // These correspond visually to landmarks in odyssey-bg.png:
@@ -102,6 +103,7 @@ function easeInOut(x: number): number {
 }
 
 export default function Journey() {
+  const { theme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [sessions, setSessions] = useState<FocusSession[]>([]);
@@ -281,7 +283,7 @@ export default function Journey() {
             Your Journey
           </h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-muted)' }}>
-            Where your completed work has taken you.
+            A map of how far your completed missions have taken you — not a to-do list.
           </p>
         </div>
 
@@ -300,6 +302,20 @@ export default function Journey() {
       </div>
 
       {/* ─── Checkpoint pill bar ───────────────────────────────────────────── */}
+      {completedMissions.length === 0 && (
+        <div className="rounded-xl px-5 py-4 mb-4 flex items-start gap-3"
+          style={{ background: 'rgba(184,122,85,0.06)', border: '1px solid rgba(184,122,85,0.18)' }}>
+          <span className="text-base mt-0.5" aria-hidden="true">🗺️</span>
+          <div>
+            <p className="text-sm font-medium mb-0.5" style={{ color: 'var(--color-app-text)' }}>
+              Your expedition map starts here.
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--color-app-text-muted)' }}>
+              Complete your first Mission to move the marker along the route. Each mission you finish advances your position.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
         {checkpointsWithStatus.map((cp, i) => (
           <button
@@ -339,7 +355,7 @@ export default function Journey() {
         style={{
           aspectRatio: '16/7',
           minHeight: '340px',
-          backgroundImage: 'url(/odyssey-bg.png)',
+          backgroundImage: `url(/${theme === 'light' ? 'odyssey2-bg.png' : 'odyssey-bg.png'})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center 40%',
           border: '1px solid rgba(49,75,115,0.5)',

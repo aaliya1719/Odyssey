@@ -4,7 +4,7 @@ export default function FinalCTASection() {
   return (
     <section
       id="final-cta"
-      className="relative w-full overflow-hidden"
+      className="landing-light-section relative w-full overflow-hidden"
       style={{ background: 'rgba(5, 8, 23, 0.82)' }}
     >
       {/* Top separator */}
@@ -15,7 +15,7 @@ export default function FinalCTASection() {
 
       {/* Background depth — subtle radial */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="landing-atmosphere absolute inset-0 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse 70% 55% at 50% 60%, rgba(16,26,53,0.6) 0%, transparent 70%)',
         }}
@@ -67,7 +67,7 @@ export default function FinalCTASection() {
           {/* CTA */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              to="/home"
+              to="/auth"
               className="inline-flex items-center px-8 py-4 text-sm font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200"
               style={{
                 background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',

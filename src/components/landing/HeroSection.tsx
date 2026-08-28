@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function HeroSection() {
   const aircraftRef = useRef<SVGCircleElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     const aircraft = aircraftRef.current;
@@ -32,11 +34,11 @@ export default function HeroSection() {
       id="hero"
       className="relative w-full min-h-screen flex items-end overflow-hidden"
     >
-      {/* ── Layer 1: odyssey-bg.png ── */}
+      {/* ── Layer 1: theme background ── */}
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: 'url(/odyssey-bg.png)',
+          backgroundImage: `url(/${theme === 'light' ? 'odyssey2-bg.png' : 'odyssey-bg.png'})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center 30%',
           backgroundRepeat: 'no-repeat',
@@ -44,8 +46,8 @@ export default function HeroSection() {
       />
 
       {/* ── Layer 2: Minimal edge overlays — image stays fully visible ── */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Bottom fog — only the very bottom where text sits; image centre stays open */}
+      <div className="hero-edge-overlays absolute inset-0 pointer-events-none">
+          {/* Bottom fog — only the very bottom where text sits; image centre stays open */}
         <div
           className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
@@ -190,7 +192,7 @@ export default function HeroSection() {
 
           {/* Supporting text */}
           <p
-            className="text-lg md:text-xl leading-relaxed max-w-lg mb-10 font-normal"
+            className="hero-supporting-text text-lg md:text-xl leading-relaxed max-w-lg mb-10 font-normal"
             style={{
               color: '#FFFFFF',
               textShadow: '0 2px 12px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.95)',
@@ -208,7 +210,7 @@ export default function HeroSection() {
           >
             {/* Primary — gold gradient */}
             <Link
-              to="/home"
+              to="/auth"
               className="inline-flex items-center px-7 py-3.5 text-sm font-semibold tracking-wide rounded-lg active:scale-[0.97] transition-all duration-200"
               style={{
                 background: 'linear-gradient(135deg, var(--color-ody-copper) 0%, var(--color-ody-gold) 100%)',
