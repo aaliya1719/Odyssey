@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
+import { taskService } from '../services/taskService';
 import { formatDuration } from '../components/FocusTimer';
 import type { Mission, Task, FocusSession } from '../types/database';
 
@@ -25,6 +26,14 @@ export default function Execute() {
   const [ending, setEnding]     = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Next recommendation state for post-completion flow
+  const [nextRecommendation, setNextRecommendation] = useState<{
+    type: 'mission' | 'task';
+    mission?: Mission;
+    task?: Task;
+  } | null>(null);
+  const [loadedNext, setLoadedNext] = useState(false);
+
   useEffect(() => {
     if (running) {
       intervalRef.current = setInterval(() => setElapsed(p => p + 1), 1000);
@@ -37,6 +46,53 @@ export default function Execute() {
   const plannedSeconds = (mission?.planned_minutes ?? 25) * 60;
   const progress       = Math.min(elapsed / plannedSeconds, 1);
   const remaining      = Math.max(0, plannedSeconds - elapsed);
+
+  // ── Helper to find next move after completion ──────────────────────────────────
+  const loadNextMove = async (completedMissionId: string, completedTaskId?: string) => {
+    try {
+      const [allTasks, allMissions] = await Promise.all([
+        taskService.getTasks(),
+        missionService.getMissions(),
+      ]);
+
+      const otherActiveMissions = allMissions.filter(
+        m => m.id !== completedMissionId && (m.status === 'planned' || m.status === 'active' || m.status === 'paused')
+      );
+
+      if (otherActiveMissions.length > 0) {
+        const nextM = otherActiveMissions.find(m => m.status === 'active' || m.status === 'paused') || otherActiveMissions[0];
+        setNextRecommendation({ type: 'mission', mission: nextM });
+        setLoadedNext(true);
+        return;
+      }
+
+      const activeTasks = allTasks.filter(
+        t => t.id !== completedTaskId && t.status !== 'completed' && t.status !== 'archived'
+      );
+
+      if (activeTasks.length > 0) {
+        const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+        const sorted = [...activeTasks].sort((a, b) => {
+          const pA = priorityOrder[a.priority] ?? 2;
+          const pB = priorityOrder[b.priority] ?? 2;
+          if (pB !== pA) return pB - pA;
+          if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          if (a.deadline) return -1;
+          if (b.deadline) return 1;
+          return 0;
+        });
+        setNextRecommendation({ type: 'task', task: sorted[0] });
+        setLoadedNext(true);
+        return;
+      }
+
+      setNextRecommendation(null);
+      setLoadedNext(true);
+    } catch (err) {
+      console.warn('Failed to load next recommendation:', err);
+      setLoadedNext(true);
+    }
+  };
 
   // ── Timer actions ──────────────────────────────────────────────────────────────
 
@@ -86,6 +142,14 @@ export default function Execute() {
       }
       const m = await missionService.completeMission(mission.id);
       setMission(m);
+      if (linkedTask || m.task_id) {
+        try {
+          await taskService.completeTask((linkedTask?.id || m.task_id)!);
+        } catch (taskErr) {
+          console.warn('Could not mark linked task completed:', taskErr);
+        }
+      }
+      await loadNextMove(m.id, linkedTask?.id || m.task_id || undefined);
     } catch (e) { console.error(e); }
     finally { setEnding(false); }
   };
@@ -501,43 +565,152 @@ export default function Execute() {
           </div>
         )}
 
-        {/* ── Post-completion navigation ── */}
-        {isFinished && (
+        {/* ── Post-completion Next Move Recommendation ── */}
+        {isCompleted && (
+          <div
+            className="mx-5 mb-5 rounded-xl p-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
+              border: '1px solid rgba(184,122,85,0.4)',
+              boxShadow: '0 8px 32px -4px rgba(3,6,13,0.6)',
+            }}
+          >
+            {nextRecommendation ? (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="text-[0.6rem] font-bold tracking-[0.16em] uppercase px-2 py-0.5 rounded"
+                    style={{
+                      backgroundColor: 'rgba(184,122,85,0.15)',
+                      color: 'var(--color-app-mission)',
+                      border: '1px solid rgba(184,122,85,0.3)',
+                    }}
+                  >
+                    YOUR NEXT MOVE
+                  </span>
+                  <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
+                    {nextRecommendation.type === 'mission' ? 'Next planned mission' : 'Highest-priority remaining task'}
+                  </span>
+                </div>
+
+                <h3 className="font-display text-lg font-semibold mb-1" style={{ color: 'var(--color-app-text)' }}>
+                  {nextRecommendation.type === 'mission'
+                    ? nextRecommendation.mission?.title
+                    : nextRecommendation.task?.title}
+                </h3>
+
+                {nextRecommendation.type === 'mission' && nextRecommendation.mission?.objective && (
+                  <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--color-app-text-muted)' }}>
+                    {nextRecommendation.mission.objective}
+                  </p>
+                )}
+
+                {nextRecommendation.type === 'task' && nextRecommendation.task?.description && (
+                  <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--color-app-text-muted)' }}>
+                    {nextRecommendation.task.description}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t"
+                  style={{ borderColor: 'rgba(49,75,115,0.25)' }}>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate('/journey')}
+                      className="px-3.5 py-2 rounded-lg text-xs font-medium cursor-pointer border transition-all"
+                      style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent', borderColor: 'var(--color-app-border)' }}
+                    >
+                      View Journey
+                    </button>
+                    <button
+                      onClick={() => navigate('/mission')}
+                      className="px-3.5 py-2 rounded-lg text-xs font-medium cursor-pointer border transition-all"
+                      style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent', borderColor: 'var(--color-app-border)' }}
+                    >
+                      All Missions
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (nextRecommendation.type === 'mission' && nextRecommendation.mission) {
+                        navigate('/execute', { state: { mission: nextRecommendation.mission } });
+                        setMission(nextRecommendation.mission);
+                        setElapsed(0);
+                        setRunning(false);
+                        setLoadedNext(false);
+                      } else if (nextRecommendation.type === 'task' && nextRecommendation.task) {
+                        navigate('/mission', { state: { prefillTask: nextRecommendation.task } });
+                      }
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      color: '#050817',
+                      boxShadow: '0 4px 14px rgba(184,122,85,0.3)',
+                    }}
+                  >
+                    <span>Start Next Mission</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ) : loadedNext ? (
+              <div className="text-center py-2">
+                <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-app-text)' }}>
+                  🎉 All caught up! All current tasks and missions completed.
+                </p>
+                <p className="text-xs mb-4" style={{ color: 'var(--color-app-text-muted)' }}>
+                  You've cleared all commitments. View your updated progress on Journey or capture what's next.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => navigate('/home')}
+                    className="px-4 py-2 rounded-lg text-xs font-medium cursor-pointer border transition-all"
+                    style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent', borderColor: 'var(--color-app-border)' }}
+                  >
+                    Capture New Thoughts
+                  </button>
+                  <button
+                    onClick={() => navigate('/journey')}
+                    className="px-5 py-2 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      color: '#050817',
+                    }}
+                  >
+                    View My Journey →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-center py-2" style={{ color: 'var(--color-app-text-dim)' }}>
+                Finding your next move…
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Post-abandonment navigation ── */}
+        {isAbandoned && (
           <div
             className="mx-5 mb-5 rounded-xl px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4"
             style={{
-              background: isCompleted ? 'rgba(74,140,106,0.06)' : 'rgba(168,59,59,0.06)',
-              border: `1px solid ${isCompleted ? 'rgba(74,140,106,0.2)' : 'rgba(168,59,59,0.2)'}`,
+              background: 'rgba(168,59,59,0.06)',
+              border: '1px solid rgba(168,59,59,0.2)',
             }}
           >
             <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-              {isCompleted
-                ? 'Work done. Head to Journey to see how far you’ve come.'
-                : 'Return to Plan to regroup.'}
+              Mission aborted. Return to Plan to regroup and choose your next focus.
             </p>
-            <div className="flex gap-3 flex-shrink-0">
-              <button
-                onClick={() => navigate('/mission')}
-                className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border transition-all"
-                style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent', borderColor: 'var(--color-app-border)' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
-              >
-                {isCompleted ? 'New Mission' : 'Back to Plan'}
-              </button>
-              {isCompleted && (
-                <button
-                  onClick={() => navigate('/journey')}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all"
-                  style={{
-                    background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
-                    color: '#050817',
-                  }}
-                >
-                  View My Journey →
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => navigate('/mission')}
+              className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border transition-all"
+              style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent', borderColor: 'var(--color-app-border)' }}
+            >
+              Back to Plan
+            </button>
           </div>
         )}
       </div>

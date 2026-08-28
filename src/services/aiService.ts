@@ -20,7 +20,7 @@ import type {
   ApproachId,
 } from '../lib/odysseyTypes';
 import { interpret } from '../lib/interpreter';          // deterministic fallback
-import { buildApproaches, missionFromApproach } from '../lib/planner'; // deterministic fallback
+import { buildApproaches } from '../lib/planner';         // deterministic fallback
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -277,49 +277,85 @@ export async function suggestMissionFromPlan(
   return deterministicMission(ctx, chosenPlan);
 }
 
+import { deriveMissionFromTask } from '../lib/missionDerivation';
+import type { Task } from '../types/database';
+
+export async function suggestMissionForTask(
+  task: Task,
+  context?: Partial<CaptureContext>,
+): Promise<AIMission> {
+  const { label } = dateMeta();
+  const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB') : null;
+
+  const data = await invoke<{
+    title: string; objective: string; next_action: string;
+    planned_minutes: number; reasoning: string;
+  }>({
+    operation:           'suggest_mission',
+    raw_input:           task.description || task.title,
+    available_hours:     context?.availableHours ?? 2,
+    energy:              context?.energy ?? 'medium',
+    current_date_label:  label,
+    selected_plan_id:    'focus',
+    selected_plan_name:  'Focused Execution',
+    selected_plan_why:   'Direct task execution',
+    first_item_text:     task.title,
+    first_item_deadline: deadlineStr,
+    all_items_summary:   task.title + (task.description ? ` (${task.description})` : ''),
+  });
+
+  if (
+    data?.title && data?.objective && data?.next_action &&
+    typeof data?.planned_minutes === 'number'
+  ) {
+    return {
+      title:           data.title,
+      objective:       data.objective,
+      next_action:     data.next_action,
+      planned_minutes: data.planned_minutes,
+      reasoning:       data.reasoning ?? '',
+      aiGenerated:     true,
+    };
+  }
+
+  // Fallback to intelligent deterministic generator
+  const derived = deriveMissionFromTask(task);
+  return {
+    title:           derived.title,
+    objective:       derived.objective,
+    next_action:     derived.next_action,
+    planned_minutes: derived.planned_minutes,
+    reasoning:       `Focused action derived from "${task.title}".`,
+    aiGenerated:     false,
+  };
+}
+
 function deterministicMission(ctx: CaptureContext, plan: AIPlan): AIMission {
-  // Build a minimal InterpretedItem from the first ordered item
   const first = plan.orderedItems[0];
   if (!first) {
     return {
       title:           ctx.rawInput.slice(0, 50).trim() || 'Next Mission',
-      objective:       'Complete the most important task at hand.',
-      next_action:     'Open the task and start.',
+      objective:       'Clear the most critical open blocker for today.',
+      next_action:     'Open your workspace and begin the primary item.',
       planned_minutes: 25,
       reasoning:       'Starting with the top-priority item.',
       aiGenerated:     false,
     };
   }
 
-  // Re-use planner's missionFromApproach via a minimal approach object
-  const fakeApproach = {
-    id:          plan.id,
-    emoji:       plan.emoji,
-    name:        plan.name,
-    tagline:     plan.tagline,
-    description: plan.whyThisApproach,
-    items:       plan.orderedItems.map((oi, idx) => ({
-      item: {
-        text:          oi.text,
-        category:      (oi.priority === 'urgent' || oi.priority === 'high'
-          ? 'deadline' : 'task') as 'deadline' | 'task' | 'upcoming' | 'goal',
-        deadlineLabel: oi.deadlineLabel ?? undefined,
-        priority:      oi.priority,
-        deadlineDate:  undefined,
-        isoDeadline:   undefined,
-      },
-      framing:  oi.rationale,
-      emphasis: 10 - idx,
-    })),
-  };
+  const derived = deriveMissionFromTask({
+    title: first.text,
+    description: first.rationale,
+    deadline: first.deadlineLabel,
+    priority: first.priority,
+  });
 
-  const input = missionFromApproach(fakeApproach);
   return {
-    title:           input.title ?? first.text,
-    objective:       input.objective ?? `Complete: ${first.text}`,
-    next_action:     input.next_action ?? `Start working on: ${first.text}`,
-    planned_minutes: input.planned_minutes ?? 25,
-    reasoning:       `Starting with the highest-priority item for ${plan.name}.`,
+    title:           derived.title,
+    objective:       derived.objective,
+    next_action:     derived.next_action,
+    planned_minutes: derived.planned_minutes,
+    reasoning:       `Targeted action for ${plan.name}: "${first.text}".`,
     aiGenerated:     false,
   };
 }

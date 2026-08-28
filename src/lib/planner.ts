@@ -113,15 +113,11 @@ function normalise(scores: number[]): number[] {
 
 // ─── Mission derivation from approach ────────────────────────────────────────
 
+import { deriveMissionFromTask } from './missionDerivation';
+
 /**
  * Derives CreateMissionInput from the highest-weighted item in a PlanApproach.
  * Purely deterministic — no AI.
- *
- * Rules:
- * - title        = the top item's text
- * - objective    = framing sentence for the top item
- * - next_action  = "Start working on: <title>" or deadline-aware variant
- * - planned_minutes = 25 (default pomodoro) unless top item has urgency signals
  */
 export function missionFromApproach(approach: PlanApproach): CreateMissionInput {
   // Top item is already sorted by approach weight
@@ -131,31 +127,19 @@ export function missionFromApproach(approach: PlanApproach): CreateMissionInput 
   }
 
   const { item, framing } = top;
-
-  // Planned minutes: urgent/high = 50m, deadline = 45m, default = 25m
-  let planned_minutes = 25;
-  if (item.priority === 'urgent') planned_minutes = 50;
-  else if (item.priority === 'high') planned_minutes = 45;
-  else if (item.category === 'deadline') planned_minutes = 45;
-
-  // Next action — deadline-aware
-  let next_action: string;
-  if (item.category === 'deadline' && item.deadlineLabel) {
-    next_action = `Open ${item.text} and do the next concrete step before ${item.deadlineLabel}.`;
-  } else if (item.category === 'upcoming' && item.deadlineLabel) {
-    next_action = `Review what's needed for ${item.text} — deadline: ${item.deadlineLabel}.`;
-  } else if (item.category === 'goal') {
-    next_action = `Sit down and spend focused time on: ${item.text}.`;
-  } else {
-    next_action = `Start working on: ${item.text}.`;
-  }
+  const derived = deriveMissionFromTask({
+    title: item.text,
+    description: framing,
+    deadline: item.isoDeadline ?? null,
+    priority: item.priority,
+  });
 
   return {
-    title:           item.text,
-    task_id:         null,   // caller can wire up if they want
-    objective:       framing,
-    next_action,
-    planned_minutes,
+    title:           derived.title,
+    task_id:         null,
+    objective:       derived.objective,
+    next_action:     derived.next_action,
+    planned_minutes: derived.planned_minutes,
   };
 }
 

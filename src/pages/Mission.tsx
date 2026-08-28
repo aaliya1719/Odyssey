@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
-import { generatePlans, suggestMissionFromPlan } from '../services/aiService';
+import { generatePlans, suggestMissionFromPlan, suggestMissionForTask } from '../services/aiService';
 import type { Task, Mission } from '../types/database';
 import type { CreateMissionInput } from '../services/missionService';
 import type {
@@ -247,6 +247,8 @@ function PlanCard({
   );
 }
 
+import { deriveMissionFromTask } from '../lib/missionDerivation';
+
 // ─── Mission creation panel ───────────────────────────────────────────────────
 
 function CreateMissionPanel({
@@ -259,13 +261,16 @@ function CreateMissionPanel({
   onCreated:   (m: Mission) => void;
   onCancel:    () => void;
 }) {
+  // Use intelligent derivation if prefillTask is provided without custom prefillInput
+  const derivedFromPrefill = prefillTask ? deriveMissionFromTask(prefillTask) : null;
+
   const initialTaskId  = prefillInput?.task_id ?? prefillTask?.id ?? '';
-  const initialTitle   = prefillInput?.title           ?? prefillTask?.title ?? '';
-  const initialObj     = prefillInput?.objective       ?? (prefillTask ? (prefillTask.description?.trim() || `Complete: ${prefillTask.title}`) : '');
-  const initialAction  = prefillInput?.next_action     ?? (prefillTask ? `Start working on: ${prefillTask.title}` : '');
+  const initialTitle   = prefillInput?.title           ?? derivedFromPrefill?.title           ?? '';
+  const initialObj     = prefillInput?.objective       ?? derivedFromPrefill?.objective       ?? '';
+  const initialAction  = prefillInput?.next_action     ?? derivedFromPrefill?.next_action     ?? '';
   const initialMinutes = prefillInput?.planned_minutes
     ? String(prefillInput.planned_minutes)
-    : prefillTask?.estimated_minutes ? String(prefillTask.estimated_minutes) : '25';
+    : derivedFromPrefill?.planned_minutes ? String(derivedFromPrefill.planned_minutes) : '25';
 
   const [selectedTaskId,   setSelectedTaskId]   = useState(initialTaskId);
   const [title,            setTitle]            = useState(initialTitle);
@@ -278,10 +283,25 @@ function CreateMissionPanel({
 
   const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
 
+  // If entering with a task directly and without AI input, try fetching AI enhancement in background
+  useEffect(() => {
+    if (prefillTask && !prefillInput && !aiMission) {
+      suggestMissionForTask(prefillTask).then(aiM => {
+        if (aiM && aiM.aiGenerated) {
+          setTitle(aiM.title);
+          setObjective(aiM.objective);
+          setNextAction(aiM.next_action);
+          setPlannedMinutes(String(aiM.planned_minutes));
+          setCurrentAiMission(aiM);
+        }
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleTaskSelect = (id: string) => {
     setSelectedTaskId(id);
     if (!id) {
-      // Switched to "— No linked task —"
       if (!initialTaskId) {
         setTitle(initialTitle);
         setObjective(initialObj);
@@ -299,7 +319,7 @@ function CreateMissionPanel({
     }
 
     if (id === initialTaskId && prefillInput) {
-      // Restored the original prefilled/AI-suggested task
+      // Restored the original prefilled input
       setTitle(initialTitle);
       setObjective(initialObj);
       setNextAction(initialAction);
@@ -308,14 +328,26 @@ function CreateMissionPanel({
       return;
     }
 
-    // Switched to a different task: derive fresh, synchronized mission content
+    // Switched to a different task: derive fresh, non-repetitive mission content
     const t = tasks.find(x => x.id === id);
     if (t) {
-      setTitle(t.title);
-      setObjective(t.description?.trim() || `Complete: ${t.title}`);
-      setNextAction(`Start working on: ${t.title}`);
-      setPlannedMinutes(t.estimated_minutes ? String(t.estimated_minutes) : '25');
+      const derived = deriveMissionFromTask(t);
+      setTitle(derived.title);
+      setObjective(derived.objective);
+      setNextAction(derived.next_action);
+      setPlannedMinutes(String(derived.planned_minutes));
       setCurrentAiMission(null);
+
+      // Async AI enhancement
+      suggestMissionForTask(t).then(aiM => {
+        if (aiM && aiM.aiGenerated) {
+          setTitle(aiM.title);
+          setObjective(aiM.objective);
+          setNextAction(aiM.next_action);
+          setPlannedMinutes(String(aiM.planned_minutes));
+          setCurrentAiMission(aiM);
+        }
+      }).catch(() => {});
     }
   };
 
@@ -346,22 +378,20 @@ function CreateMissionPanel({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="font-display text-lg" style={{ color: 'var(--color-app-text)' }}>
-              {prefillInput ? 'Your next mission' : 'Define Mission'}
+              {prefillInput || prefillTask ? 'Your next mission' : 'Define Mission'}
             </h2>
             {currentAiMission?.aiGenerated && (
               <span className="text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
                 style={{ background: 'rgba(184,122,85,0.12)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.3)' }}>
-                AI
+                AI Suggested
               </span>
             )}
           </div>
-          {prefillInput && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>
-              {currentAiMission?.aiGenerated
-                ? 'Suggested by Odyssey · edit anything before launching.'
-                : 'Based on your chosen approach · edit anything before launching.'}
-            </p>
-          )}
+          <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>
+            {currentAiMission?.aiGenerated
+              ? 'Suggested by Odyssey · edit anything before launching.'
+              : 'Focused execution parameters · edit anything before launching.'}
+          </p>
           {/* AI reasoning insight */}
           {currentAiMission?.reasoning && (
             <p className="text-xs mt-2 leading-relaxed"
@@ -789,7 +819,7 @@ export default function Mission() {
           <button onClick={load} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
             style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
         </div>
-      ) : planScreen === 'list' && missions.length === 0 ? (
+      ) : planScreen === 'list' && activeMissions.length === 0 && tasks.filter(t => t.status !== 'completed' && t.status !== 'archived').length === 0 ? (
         <div className="rounded-xl p-14 text-center"
           style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -800,32 +830,307 @@ export default function Mission() {
                 d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
           </div>
-          <h3 className="font-display text-xl mb-2" style={{ color: 'var(--color-app-text)' }}>No missions yet</h3>
+          <h3 className="font-display text-xl mb-2" style={{ color: 'var(--color-app-text)' }}>No active tasks or missions</h3>
           <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: 'var(--color-app-text-muted)' }}>
-            A Mission is a short, focused block of work. Go back to Capture to let Odyssey suggest one, or create one here.
+            Capture what's currently on your mind first to let Odyssey suggest your next move.
           </p>
-          <button
-            onClick={() => { setPlanScreen('create_mission'); setPrefillInput(null); }}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium cursor-pointer border-none"
-            style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}>
-            Launch First Mission
-          </button>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => navigate('/home')}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium cursor-pointer border-none"
+              style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}>
+              Go to Capture →
+            </button>
+            <button
+              onClick={() => { setPlanScreen('create_mission'); setPrefillInput(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border"
+              style={{ backgroundColor: 'transparent', color: 'var(--color-app-text-muted)', borderColor: 'var(--color-app-border)' }}>
+              Custom Mission
+            </button>
+          </div>
         </div>
       ) : planScreen === 'list' ? (
         <>
+          {/* Contextual guidance banner */}
+          <div className="rounded-xl px-5 py-3.5 mb-6 flex items-start gap-3"
+            style={{ background: 'rgba(184,122,85,0.06)', border: '1px solid rgba(184,122,85,0.2)' }}>
+            <span className="text-base mt-0.5" aria-hidden="true">💡</span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-app-mission)' }}>
+                How Odyssey Prioritizes
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-app-text-muted)' }}>
+                Odyssey analyzes your deadlines and energy to recommend the single most important <strong>Next Move</strong>. Focus on the spotlight recommendation below, or pick any other task when you want to switch gears.
+              </p>
+            </div>
+          </div>
+
+          {/* 1. SPOTLIGHT: Recommended Next Move (Active Mission) */}
           {activeMissions.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2 h-2 rounded-full bg-[#B87A55] animate-pulse" />
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-mission)' }}>
+                  Recommended Next Move
+                </p>
+              </div>
+              <div
+                className="rounded-2xl p-6"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
+                  border: '1px solid rgba(184,122,85,0.45)',
+                  boxShadow: '0 8px 32px -4px rgba(184,122,85,0.15)',
+                }}
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-[0.65rem] font-bold tracking-wider uppercase px-2 py-0.5 rounded"
+                    style={{ backgroundColor: 'rgba(184,122,85,0.18)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.35)' }}>
+                    {STATUS_LABELS[activeMissions[0].status]}
+                  </span>
+                  {activeMissions[0].task_id && (
+                    <span className="text-xs truncate max-w-[240px]" style={{ color: 'var(--color-app-text-dim)' }}>
+                      ↳ {tasks.find(t => t.id === activeMissions[0].task_id)?.title}
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="text-xl font-display font-semibold mb-2" style={{ color: 'var(--color-app-text)' }}>
+                  {activeMissions[0].title}
+                </h2>
+
+                {activeMissions[0].objective && (
+                  <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-app-text-muted)' }}>
+                    {activeMissions[0].objective}
+                  </p>
+                )}
+
+                {activeMissions[0].next_action && (
+                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5"
+                    style={{ backgroundColor: 'rgba(5,8,23,0.6)', border: '1px solid rgba(49,75,115,0.35)' }}>
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor" strokeWidth={2} style={{ color: 'var(--color-app-mission)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653z" />
+                    </svg>
+                    <div>
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider block mb-0.5" style={{ color: 'var(--color-app-mission)' }}>
+                        First action
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--color-app-text)' }}>
+                        {activeMissions[0].next_action}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: 'rgba(49,75,115,0.3)' }}>
+                  <div className="flex items-center gap-3">
+                    {activeMissions[0].planned_minutes && (
+                      <span className="text-xs font-mono flex items-center gap-1" style={{ color: 'var(--color-app-text-dim)' }}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="12" cy="12" r="10" /><path strokeLinecap="round" d="M12 6v6l4 2" />
+                        </svg>
+                        {activeMissions[0].planned_minutes}m focus
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleExecute(activeMissions[0], tasks.find(t => t.id === activeMissions[0].task_id) ?? null)}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      color: '#050817',
+                      boxShadow: '0 4px 16px rgba(184,122,85,0.35)',
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653z" />
+                    </svg>
+                    {activeMissions[0].status === 'paused' ? 'Resume Mission' : activeMissions[0].status === 'active' ? 'Continue Executing' : 'Start Executing'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 1. SPOTLIGHT: Recommended Next Move (Top Task when no active mission) */}
+          {activeMissions.length === 0 && tasks.filter(t => t.status !== 'completed' && t.status !== 'archived').length > 0 && (() => {
+            const activeList = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
+            const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+            const sorted = [...activeList].sort((a, b) => {
+              const pA = priorityOrder[a.priority] ?? 2;
+              const pB = priorityOrder[b.priority] ?? 2;
+              if (pB !== pA) return pB - pA;
+              if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+              if (a.deadline) return -1;
+              if (b.deadline) return 1;
+              return 0;
+            });
+            const topTask = sorted[0];
+            const derived = deriveMissionFromTask(topTask);
+
+            return (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-[#B87A55] animate-pulse" />
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-mission)' }}>
+                    Recommended Next Move
+                  </p>
+                </div>
+                <div
+                  className="rounded-2xl p-6"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
+                    border: '1px solid rgba(184,122,85,0.45)',
+                    boxShadow: '0 8px 32px -4px rgba(184,122,85,0.15)',
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="text-[0.65rem] font-bold tracking-wider uppercase px-2 py-0.5 rounded"
+                      style={{ backgroundColor: 'rgba(184,122,85,0.18)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.35)' }}>
+                      {topTask.priority} priority
+                    </span>
+                    {topTask.deadline && (
+                      <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
+                        Due {new Date(topTask.deadline).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
+                  <h2 className="text-xl font-display font-semibold mb-1" style={{ color: 'var(--color-app-text)' }}>
+                    {derived.title}
+                  </h2>
+
+                  <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-app-text-muted)' }}>
+                    {derived.objective}
+                  </p>
+
+                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5"
+                    style={{ backgroundColor: 'rgba(5,8,23,0.6)', border: '1px solid rgba(49,75,115,0.35)' }}>
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor" strokeWidth={2} style={{ color: 'var(--color-app-mission)' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653z" />
+                    </svg>
+                    <div>
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider block mb-0.5" style={{ color: 'var(--color-app-mission)' }}>
+                        First action
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--color-app-text)' }}>
+                        {derived.next_action}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: 'rgba(49,75,115,0.3)' }}>
+                    <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-dim)' }}>
+                      {derived.planned_minutes}m suggested block
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        setPrefillInput(null);
+                        setAiMission(null);
+                        navigate('/mission', { state: { prefillTask: topTask } });
+                        setPlanScreen('create_mission');
+                      }}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                        color: '#050817',
+                        boxShadow: '0 4px 16px rgba(184,122,85,0.35)',
+                      }}
+                    >
+                      <span>Launch This Mission</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 2. OTHER PLANNED MISSIONS */}
+          {activeMissions.length > 1 && (
             <div className="space-y-3 mb-8">
               <p className="text-xs font-semibold uppercase tracking-wider mb-3"
                 style={{ color: 'var(--color-app-text-dim)' }}>
-                Active &amp; Planned
+                Other Planned Missions
               </p>
-              {activeMissions.map(m => (
+              {activeMissions.slice(1).map(m => (
                 <MissionCard key={m.id} mission={m}
                   linkedTask={tasks.find(t => t.id === m.task_id) ?? null}
                   onDelete={handleDeleteMission} onExecute={handleExecute} />
               ))}
             </div>
           )}
+
+          {/* 3. OTHER TASKS YOU CAN TURN INTO A MISSION */}
+          {(() => {
+            const activeMissionTaskIds = new Set(activeMissions.map(m => m.task_id).filter(Boolean));
+            const availableTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived' && !activeMissionTaskIds.has(t.id));
+            if (availableTasks.length === 0) return null;
+
+            return (
+              <div className="mb-8">
+                <div className="mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: 'var(--color-app-text-dim)' }}>
+                    Other Tasks You Can Focus On
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-muted)' }}>
+                    Prefer to work on something else? Select any task below to launch a mission.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {availableTasks.map(t => (
+                    <div
+                      key={t.id}
+                      className="rounded-xl p-3.5 flex items-center justify-between gap-3 transition-all"
+                      style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate" style={{ color: 'var(--color-app-text)' }}>
+                            {t.title}
+                          </span>
+                          <span className="text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: 'rgba(30,60,100,0.3)', color: 'var(--color-app-text-dim)' }}>
+                            {t.priority}
+                          </span>
+                        </div>
+                        {t.deadline && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>
+                            Due {new Date(t.deadline).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPrefillInput(null);
+                          setAiMission(null);
+                          navigate('/mission', { state: { prefillTask: t } });
+                          setPlanScreen('create_mission');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all flex-shrink-0"
+                        style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.25)' }}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                        Start Mission
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 4. COMPLETED MISSIONS */}
           {doneMissions.length > 0 && (
             <details className="group">
               <summary className="text-xs font-semibold uppercase tracking-wider cursor-pointer mb-3 flex items-center gap-2 select-none list-none"
