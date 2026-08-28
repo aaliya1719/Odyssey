@@ -192,7 +192,7 @@ export default function HeroSection() {
           <p
             className="text-lg md:text-xl leading-relaxed max-w-lg mb-10 font-light"
             style={{
-              color: 'var(--color-ody-ink-muted)',
+              color: 'rgba(232, 231, 226, 0.92)',
               animation: 'landing-fade-up 1s cubic-bezier(0.22,1,0.36,1) 0.45s both',
             }}
           >
