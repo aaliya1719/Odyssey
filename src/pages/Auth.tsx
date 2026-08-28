@@ -6,6 +6,7 @@ export default function Auth() {
   const { isAuthenticated, loading: authLoading, signUp, signInWithPassword, signInWithGoogle } = useAuth();
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authMode,     setAuthMode]     = useState<'signin' | 'signup'>('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
@@ -206,18 +207,39 @@ export default function Auth() {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                disabled={isSubmitting}
-                className="app-input w-full"
-                autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={isSubmitting}
+                  className="app-input w-full pr-11"
+                  autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(current => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center rounded-md cursor-pointer border-none bg-transparent"
+                  style={{ color: 'var(--color-app-text-muted)' }}
+                >
+                  {showPassword ? (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.58a2 2 0 0 0 2.83 2.83M9.88 4.24A10.76 10.76 0 0 1 12 4c5.05 0 8.4 4.5 9.5 6.2a3.36 3.36 0 0 1 0 3.6 18.4 18.4 0 0 1-2.1 2.53M6.23 6.23C4.45 7.43 3.1 9.12 2.5 10.2a3.36 3.36 0 0 0 0 3.6C3.6 15.5 6.95 20 12 20c1.61 0 3.05-.43 4.3-1.1" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.35-6 9.5-6 9.5 6 9.5 6-3.35 6-9.5 6-9.5-6-9.5-6Z" />
+                      <circle cx="12" cy="12" r="2.5" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button
