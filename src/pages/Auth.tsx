@@ -3,13 +3,15 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Auth() {
-  const { isAuthenticated, loading: authLoading, signInWithPassword, signInWithGoogle } = useAuth();
+  const { isAuthenticated, loading: authLoading, signUp, signInWithPassword, signInWithGoogle } = useAuth();
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const [success,      setSuccess]      = useState<string | null>(null);
 
   // Detect whether the page was opened via a magic-link callback.
   // In that case the URL will contain a hash with access_token (implicit flow)
@@ -65,10 +67,18 @@ export default function Auth() {
     if (!email.trim() || !password) return;
     setIsSubmitting(true);
     setError(null);
+    setSuccess(null);
     try {
-      await signInWithPassword(email.trim(), password);
+      if (authMode === 'signup') {
+        const { session } = await signUp(email.trim(), password);
+        if (!session) {
+          setSuccess('Account created. Check your email to confirm your account, then sign in.');
+        }
+      } else {
+        await signInWithPassword(email.trim(), password);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in. Please try again.');
+      setError(err instanceof Error ? err.message : `Unable to ${authMode === 'signup' ? 'create your account' : 'sign in'}. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -77,6 +87,7 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSubmitting(true);
     setError(null);
+    setSuccess(null);
     try {
       await signInWithGoogle();
     } catch (err: unknown) {
@@ -113,11 +124,16 @@ export default function Auth() {
             Begin Your Odyssey
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-            Sign in with your email and password.
+            {authMode === 'signup' ? 'Create your account with email and password.' : 'Sign in with your email and password.'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+            {success && (
+              <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(74,140,106,0.1)', border: '1px solid rgba(74,140,106,0.25)', color: '#4A8C6A' }}>
+                {success}
+              </div>
+            )}
             {error && (
               <div
                 className="rounded-lg p-3 text-sm"
@@ -204,10 +220,10 @@ export default function Auth() {
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in…</span>
+                  <span>{authMode === 'signup' ? 'Creating account…' : 'Signing in…'}</span>
                 </>
               ) : (
-                'Sign in'
+                authMode === 'signup' ? 'Create account' : 'Sign in'
               )}
             </button>
 
@@ -240,6 +256,18 @@ export default function Auth() {
               )}
               <span>{isGoogleSubmitting ? 'Redirecting…' : 'Continue with Google'}</span>
             </button>
+
+            <p className="text-center text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
+              {authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}{' '}
+              <button
+                type="button"
+                onClick={() => { setAuthMode(current => current === 'signin' ? 'signup' : 'signin'); setError(null); setSuccess(null); setPassword(''); }}
+                className="font-medium underline underline-offset-2 cursor-pointer border-none bg-transparent p-0"
+                style={{ color: 'var(--color-app-mission)' }}
+              >
+                {authMode === 'signup' ? 'Sign in' : 'Create one'}
+              </button>
+            </p>
           </form>
       </div>
     </div>
