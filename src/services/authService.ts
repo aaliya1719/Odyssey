@@ -5,17 +5,12 @@ export const authService = {
   /**
    * Send a magic link / OTP email for passwordless sign-in.
    *
-   * emailRedirectTo points to the app root so the supabase-js client can
-   * exchange the token on ANY page load — not just /auth. The client's
-   * detectSessionInUrl + autoInitialize handles the exchange automatically,
-   * then onAuthStateChange fires SIGNED_IN regardless of which page the
-   * user lands on. Pointing to root (rather than /auth) also avoids a
-   * redirect-URL mismatch if the user opens the link from a different
-   * browser/device where the tab isn't sitting on /auth.
+  * Return to /auth so the existing authenticated redirect sends the user
+  * to /home after the client exchanges the token.
    */
   async signInWithOtp(email: string) {
     const redirectTo = typeof window !== 'undefined'
-      ? window.location.origin          // e.g. http://localhost:5173
+      ? `${window.location.origin}/auth`
       : undefined;
 
     const { data, error } = await supabase.auth.signInWithOtp({

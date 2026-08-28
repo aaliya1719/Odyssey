@@ -14,15 +14,32 @@ export default function Auth() {
   // In that case the URL will contain a hash with access_token (implicit flow)
   // or a ?code= query param (PKCE flow). Show a loading spinner while the
   // supabase-js client exchanges the token and fires SIGNED_IN.
-  const isCallback = typeof window !== 'undefined' && (
+  const callbackError = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('error_description') ||
+      new URLSearchParams(window.location.hash.replace(/^#/, '')).get('error_description')
+    : null;
+
+  const isCallback = typeof window !== 'undefined' && !callbackError && (
     window.location.hash.includes('access_token') ||
-    window.location.hash.includes('error_description') ||
     new URLSearchParams(window.location.search).has('code')
   );
 
   // Already authenticated — go straight to the app.
   if (!authLoading && isAuthenticated) {
     return <Navigate to="/home" replace />;
+  }
+
+  if (callbackError) {
+    return (
+      <div className="flex justify-center items-start pt-16 pb-24 px-4">
+        <div className="w-full max-w-md rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
+          <p className="text-sm" style={{ color: '#E07070' }}>{callbackError}</p>
+          <a href="/auth" className="inline-block mt-5 text-sm underline underline-offset-2" style={{ color: 'var(--color-app-mission)' }}>
+            Return to sign in
+          </a>
+        </div>
+      </div>
+    );
   }
 
   // Still resolving the session (initial load or mid-callback exchange).
