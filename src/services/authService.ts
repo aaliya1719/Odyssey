@@ -37,6 +37,22 @@ export const authService = {
     return data;
   },
 
+  async resetPasswordForEmail(email: string) {
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}/auth`
+      : undefined;
+
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePassword(password: string) {
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    return data;
+  },
+
   /**
    * Start Google OAuth and return to the app after Supabase completes sign-in.
    */

@@ -3,15 +3,21 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Auth() {
-  const { isAuthenticated, loading: authLoading, signUp, signInWithPassword, signInWithGoogle } = useAuth();
+  const { isAuthenticated, loading: authLoading, signUp, signInWithPassword, resetPasswordForEmail, updatePassword, signInWithGoogle } = useAuth();
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authMode,     setAuthMode]     = useState<'signin' | 'signup'>('signin');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [success,      setSuccess]      = useState(false);
+
+  React.useEffect(() => {
+    setIsRecovery(typeof window !== 'undefined' && window.location.hash.includes('type=recovery'));
+  }, []);
 
   // Detect whether the page was opened via a magic-link callback.
   // In that case the URL will contain a hash with access_token (implicit flow)
@@ -28,7 +34,7 @@ export default function Auth() {
   );
 
   // Already authenticated — go straight to the app.
-  if (!authLoading && isAuthenticated) {
+  if (!authLoading && isAuthenticated && !isRecovery) {
     return <Navigate to="/home" replace />;
   }
 
@@ -69,18 +75,39 @@ export default function Auth() {
     setError(null);
     setSuccess(false);
     try {
-      if (authMode === 'signup') {
+      if (isRecovery) {
+        await updatePassword(password);
+        setIsRecovery(false);
+        setPassword('');
+        setSuccess(true);
+      } else if (authMode === 'signup') {
         const { session } = await signUp(email.trim(), password);
         setSuccess(!session);
       } else {
         await signInWithPassword(email.trim(), password);
       }
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
       setError(
-        err instanceof Error
-          ? err.message
-          : `Failed to ${authMode === 'signup' ? 'create your account' : 'sign in'}. Please try again.`
+        message === 'Invalid login credentials'
+          ? 'Invalid email or password. Check your details or use Forgot password? to reset it.'
+          : message || `Failed to ${authMode === 'signup' ? 'create your account' : 'sign in'}. Please try again.`
       );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await resetPasswordForEmail(email.trim());
+      setSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send the password reset email. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +152,7 @@ export default function Auth() {
             Begin Your Odyssey
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-            {authMode === 'signup' ? 'Create your account with email and password.' : 'Sign in with your email and password.'}
+            {isRecovery ? 'Choose a new password for your account.' : isForgotPassword ? 'Enter your email to receive a password reset link.' : authMode === 'signup' ? 'Create your account with email and password.' : 'Sign in with your email and password.'}
           </p>
         </div>
 
@@ -150,21 +177,23 @@ export default function Auth() {
               </svg>
             </div>
             <h3 className="font-semibold mb-1" style={{ color: 'var(--color-app-text)' }}>
-              Check your inbox
+              {isForgotPassword ? 'Check your inbox' : 'Account created'}
             </h3>
-              <p className="text-sm mb-5" style={{ color: 'var(--color-app-text-muted)' }}>
-              Your account was created. You can now sign in with your password.
+            <p className="text-sm mb-5" style={{ color: 'var(--color-app-text-muted)' }}>
+              {isForgotPassword
+                ? 'We sent a password reset link to your email address.'
+                : 'Your account was created. You can now sign in with your password.'}
             </p>
             <button
-              onClick={() => { setSuccess(false); setPassword(''); setAuthMode('signin'); }}
+              onClick={() => { setSuccess(false); setPassword(''); setAuthMode('signin'); setIsForgotPassword(false); }}
               className="text-xs font-medium cursor-pointer bg-transparent border-none underline underline-offset-2"
               style={{ color: 'var(--color-app-mission)' }}
             >
-              Sign in instead
+              {isForgotPassword ? 'Back to sign in' : 'Sign in instead'}
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={isForgotPassword && !isRecovery ? handleForgotPassword : handleSubmit} className="space-y-5">
             {error && (
               <div
                 className="rounded-lg p-3 text-sm"
@@ -193,13 +222,26 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isRecovery}
                 className="app-input w-full"
                 autoComplete="email"
               />
             </div>
 
-            <div>
+            {!isForgotPassword && !isRecovery && authMode === 'signin' && (
+              <div className="text-right -mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsForgotPassword(true); setError(null); setPassword(''); }}
+                  className="text-xs font-medium underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                  style={{ color: 'var(--color-app-mission)' }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {!isForgotPassword || isRecovery ? <div>
               <label
                 htmlFor="password"
                 className="block text-xs font-semibold uppercase tracking-wider mb-2"
@@ -215,7 +257,7 @@ export default function Auth() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={isRecovery ? 'Enter your new password' : 'Enter your password'}
                   disabled={isSubmitting}
                   className="app-input w-full pr-11"
                   autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
@@ -240,31 +282,31 @@ export default function Auth() {
                   )}
                 </button>
               </div>
-            </div>
+            </div> : null}
 
             <button
               type="submit"
-              disabled={isSubmitting || isGoogleSubmitting || !email.trim() || !password}
+              disabled={isSubmitting || isGoogleSubmitting || (!isRecovery && !email.trim()) || (!isForgotPassword && !password)}
               className="w-full py-3 px-4 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border-none disabled:opacity-50 disabled:pointer-events-none"
               style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>{authMode === 'signup' ? 'Creating account…' : 'Signing in…'}</span>
+                  <span>{isRecovery ? 'Updating password…' : isForgotPassword ? 'Sending reset link…' : authMode === 'signup' ? 'Creating account…' : 'Signing in…'}</span>
                 </>
               ) : (
-                authMode === 'signup' ? 'Create account' : 'Sign in'
+                isRecovery ? 'Update password' : isForgotPassword ? 'Send reset link' : authMode === 'signup' ? 'Create account' : 'Sign in'
               )}
             </button>
 
-            <div className="flex items-center gap-3" aria-hidden="true">
+            {!isForgotPassword && !isRecovery && <div className="flex items-center gap-3" aria-hidden="true">
               <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-app-border)' }} />
               <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>or</span>
               <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-app-border)' }} />
-            </div>
+            </div>}
 
-            <button
+            {!isForgotPassword && !isRecovery && <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isSubmitting || isGoogleSubmitting}
@@ -286,18 +328,34 @@ export default function Auth() {
                 </svg>
               )}
               <span>{isGoogleSubmitting ? 'Redirecting…' : 'Continue with Google'}</span>
-            </button>
+            </button>}
 
             <p className="text-center text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-              {authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}{' '}
-              <button
+              {isRecovery || isForgotPassword ? '' : authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}{!isRecovery && !isForgotPassword && ' '}
+              {!isRecovery && !isForgotPassword && <button
                 type="button"
                 onClick={() => { setAuthMode(authMode === 'signup' ? 'signin' : 'signup'); setError(null); setSuccess(false); }}
                 className="font-medium underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
                 style={{ color: 'var(--color-app-mission)' }}
               >
                 {authMode === 'signup' ? 'Sign in' : 'Create one'}
-              </button>
+              </button>}
+              {isRecovery && <button
+                type="button"
+                onClick={() => { setIsRecovery(false); setAuthMode('signin'); setPassword(''); setError(null); }}
+                className="font-medium underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                style={{ color: 'var(--color-app-mission)' }}
+              >
+                Back to sign in
+              </button>}
+              {isForgotPassword && <button
+                type="button"
+                onClick={() => { setIsForgotPassword(false); setError(null); setSuccess(false); }}
+                className="font-medium underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                style={{ color: 'var(--color-app-mission)' }}
+              >
+                Back to sign in
+              </button>}
             </p>
           </form>
         )}

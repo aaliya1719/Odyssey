@@ -40,6 +40,8 @@ export function useAuth() {
     signInWithOtp: authService.signInWithOtp.bind(authService),
     signUp:        authService.signUp.bind(authService),
     signInWithPassword: authService.signInWithPassword.bind(authService),
+    resetPasswordForEmail: authService.resetPasswordForEmail.bind(authService),
+    updatePassword: authService.updatePassword.bind(authService),
     signInWithGoogle: authService.signInWithGoogle.bind(authService),
     verifyOtp:     authService.verifyOtp.bind(authService),
     signOut:       authService.signOut.bind(authService),
