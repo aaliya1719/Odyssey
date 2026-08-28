@@ -101,24 +101,28 @@
    surface system, with its own canvas, type, borders, and tonal hierarchy. */
 /* ===== LIGHT THEME SYSTEM =====
    Cohesive exploration palette: Pale Sky → Mist → Soft Sage → Pale Teal → Soft Lavender / Slate Blue
-   with Terracotta and Celestial Gold accents. Zero pink/blush tones. */
+   with Terracotta and Celestial Gold accents matching odyssey2-bg.png. */
 [data-theme='light'] {
   --light-bg: #E6ECEB;               /* Mist */
+  --light-surface: rgba(244, 248, 247, 0.85);       /* Luminous frosted mist surface */
+  --light-surface-raised: rgba(236, 244, 243, 0.92); /* Raised card surface */
+  --light-surface-overlay: rgba(228, 238, 239, 0.96);/* Overlay surface */
   --light-sky: #DCE7E8;              /* Pale sky */
   --light-sage: #DDE6DC;             /* Sage */
   --light-teal: #D8E5E3;             /* Pale muted teal */
   --light-lavender: #DFE3EC;         /* Soft muted lavender */
   --light-blue: #DCE4EC;             /* Pale slate blue */
-  --light-navy: #26384A;             /* Deep navy */
-  --light-text-secondary: #5D6D83;    /* Muted slate navy */
-  --light-text-muted: #78879A;       /* Subtle muted tone */
+  --light-navy: #1E2D3D;             /* Deep navy */
+  --light-text: #1E2D3D;             /* Primary text */
+  --light-text-secondary: #4A5D73;   /* Muted slate navy */
+  --light-text-muted: #6B7E94;       /* Subtle muted tone */
   --light-terracotta: #C98268;       /* Terracotta */
   --light-gold: #D5A653;             /* Gold */
   --light-border: rgba(38, 56, 74, 0.12);
   --light-border-subtle: rgba(38, 56, 74, 0.07);
 
   --color-ody-bg: var(--light-bg);
-  --color-ody-surface: var(--light-teal);
+  --color-ody-surface: var(--light-surface);
   --color-ody-surface-warm: var(--light-sage);
   --color-ody-ink: var(--light-navy);
   --color-ody-ink-muted: var(--light-text-secondary);
@@ -138,9 +142,9 @@
   --color-ody-achievement: var(--light-gold);
 
   --color-app-bg: var(--light-bg);
-  --color-app-surface: var(--light-teal);
-  --color-app-surface-raised: var(--light-blue);
-  --color-app-surface-overlay: var(--light-sky);
+  --color-app-surface: var(--light-surface);
+  --color-app-surface-raised: var(--light-surface-raised);
+  --color-app-surface-overlay: var(--light-surface-overlay);
   --color-app-text: var(--light-navy);
   --color-app-text-muted: var(--light-text-secondary);
   --color-app-text-dim: var(--light-text-muted);
@@ -152,9 +156,9 @@
   --color-app-gold: var(--light-gold);
   --color-app-gold-light: rgba(213, 166, 83, 0.15);
   --color-app-gold-glow: rgba(213, 166, 83, 0.08);
-  --color-app-success: #5F7D67;
+  --color-app-success: #4A8562;
   --color-app-warning: #BA8E3E;
-  --color-theme-toggle-bg: rgba(230, 236, 235, 0.85);
+  --color-theme-toggle-bg: rgba(240, 245, 244, 0.85);
 }
 
 [data-theme='light'] body,
@@ -256,49 +260,89 @@
   background: linear-gradient(90deg, rgba(93, 109, 131, 0.3) 0%, rgba(201, 130, 104, 0.45) 50%, rgba(213, 166, 83, 0.55) 100%) !important;
 }
 
-/* App navigation & cards */
-[data-theme='light'] .atmospheric-background {
-  display: none;
-}
-
+/* App navigation & header */
 [data-theme='light'] .app-navigation {
-  background: rgba(240, 245, 244, 0.85) !important;
+  background: rgba(242, 247, 246, 0.88) !important;
   border-bottom-color: rgba(38, 56, 74, 0.1) !important;
-  box-shadow: 0 3px 14px rgba(38, 56, 74, 0.04);
+  box-shadow: 0 3px 16px rgba(38, 56, 74, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-[data-theme='light'] .app-card,
+/* App cards & highlighters matching odyssey2-bg.png landscape palette */
+[data-theme='light'] .app-card {
+  background: rgba(244, 248, 247, 0.85) !important;
+  border-color: rgba(38, 56, 74, 0.12) !important;
+  box-shadow: 0 4px 20px -2px rgba(38, 56, 74, 0.05) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 [data-theme='light'] .app-card-raised {
-  background: rgba(230, 238, 237, 0.55);
-  border-color: rgba(38, 56, 74, 0.1);
-  box-shadow: 0 4px 16px rgba(38, 56, 74, 0.04);
+  background: rgba(238, 245, 244, 0.9) !important;
+  border-color: rgba(38, 56, 74, 0.13) !important;
+  box-shadow: 0 6px 24px -3px rgba(38, 56, 74, 0.06) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 [data-theme='light'] .app-input {
-  background: rgba(242, 246, 245, 0.75);
-  border-color: rgba(38, 56, 74, 0.12);
-  color: var(--light-navy);
+  background: rgba(248, 251, 250, 0.9) !important;
+  border-color: rgba(38, 56, 74, 0.15) !important;
+  color: var(--light-navy) !important;
 }
 
-/* Remaining legacy inline surfaces in app views. */
+[data-theme='light'] .app-input:focus {
+  border-color: var(--light-terracotta) !important;
+  box-shadow: 0 0 0 3px rgba(201, 130, 104, 0.16) !important;
+}
+
+/* App inline dark surfaces converted to daylight frosted highlighters */
 [data-theme='light'] body.app-mode [style*='rgba(8,19,33'],
 [data-theme='light'] body.app-mode [style*='rgba(8, 19, 33'],
 [data-theme='light'] body.app-mode [style*='rgba(5,8,23'],
 [data-theme='light'] body.app-mode [style*='rgba(5, 8, 23'],
 [data-theme='light'] body.app-mode [style*='rgba(13,26,48'],
 [data-theme='light'] body.app-mode [style*='rgba(13, 26, 48'] {
-  background: var(--light-surface) !important;
-  background-color: var(--light-surface) !important;
+  background: rgba(245, 248, 247, 0.85) !important;
+  background-color: rgba(245, 248, 247, 0.85) !important;
+  border-color: rgba(38, 56, 74, 0.12) !important;
+  box-shadow: 0 4px 20px -2px rgba(38, 56, 74, 0.05) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Spotlight & Featured Next Move cards in light mode: luminous mist with terracotta/gold highlighter glow */
+[data-theme='light'] body.app-mode [style*='rgba(18,32,58'] {
+  background: linear-gradient(135deg, rgba(247, 250, 249, 0.95) 0%, rgba(237, 246, 245, 0.9) 100%) !important;
+  background-color: rgba(247, 250, 249, 0.95) !important;
+  border-color: rgba(201, 130, 104, 0.35) !important;
+  box-shadow: 0 8px 30px -4px rgba(201, 130, 104, 0.14), 0 2px 10px rgba(38, 56, 74, 0.04) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Mission Control Console in Execute.tsx */
+[data-theme='light'] body.app-mode [style*='radial-gradient(ellipse 120% 50% at 50% 0%'] {
+  background: linear-gradient(180deg, rgba(248, 251, 250, 0.98) 0%, rgba(236, 245, 244, 0.95) 100%) !important;
+  border-color: rgba(38, 56, 74, 0.12) !important;
+  box-shadow: 0 8px 32px -4px rgba(38, 56, 74, 0.07) !important;
+}
+
+/* Subtle sub-panels in Execute & Mission */
+[data-theme='light'] body.app-mode [style*='rgba(5,8,23,0.6)'] {
+  background: rgba(233, 242, 241, 0.75) !important;
+  border-color: rgba(38, 56, 74, 0.1) !important;
 }
 
 [data-theme='light'] body.app-mode [style*='rgba(30,60,100'],
 [data-theme='light'] body.app-mode [style*='rgba(49,75,115'] {
-  border-color: var(--light-border) !important;
+  border-color: rgba(38, 56, 74, 0.12) !important;
 }
 
 [data-theme='light'] body.app-mode [style*='#E8E2D9'],
 [data-theme='light'] body.app-mode [style*='#E8E7E2'] {
-  color: var(--light-text) !important;
+  color: var(--light-navy) !important;
 }
 
 /* ─── Box-sizing ───────────────────────────────────────────────── */
