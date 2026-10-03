@@ -248,6 +248,8 @@ function PlanCard({
 }
 
 import { deriveMissionFromTask } from '../lib/missionDerivation';
+import { useMissionTimer } from '../hooks/useMissionTimer';
+import { formatDuration } from '../components/FocusTimer';
 
 // ─── Mission creation panel ───────────────────────────────────────────────────
 
@@ -716,8 +718,15 @@ export default function Mission() {
 
   const activeMissions = missions.filter(m => ['planned', 'active', 'paused'].includes(m.status));
   const doneMissions   = missions.filter(m => ['completed', 'abandoned'].includes(m.status));
+  const currentMission = activeMissions.find(m => m.status === 'active' || m.status === 'paused') ?? activeMissions[0] ?? null;
+  const currentMissionTask = currentMission?.task_id ? tasks.find(t => t.id === currentMission.task_id) : null;
+  const currentTimer = useMissionTimer(currentMission, updatedMission => {
+    setMissions(previous => previous.map(m => m.id === updatedMission.id ? updatedMission : m));
+  });
+  const currentPlannedSeconds = (currentMission?.planned_minutes ?? 25) * 60;
+  const currentProgress = Math.min(currentTimer.elapsed / currentPlannedSeconds, 1);
+  const showLegacyList = false;
 
-  // Loading spinner (for plans or mission suggestion)
   const loadingMessage = planScreen === 'loading_plans'
     ? { title: 'Building your plans…', sub: 'Analysing tasks, deadlines, and your available time.' }
     : planScreen === 'loading_mission'
@@ -730,91 +739,40 @@ export default function Mission() {
       {/* Header */}
       <div className="flex items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-2"
-            style={{ color: 'var(--color-app-mission)' }}>
+          <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-2" style={{ color: 'var(--color-app-mission)' }}>
             Step 2 — Plan
           </p>
-          <h1 className="font-display text-3xl" style={{ color: 'var(--color-app-text)' }}>
-            Your Next Move
-          </h1>
+          <h1 className="font-display text-3xl" style={{ color: 'var(--color-app-text)' }}>Your Next Move</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-app-text-muted)' }}>
-            {planScreen === 'choose_plan'
-              ? 'Odyssey has turned your input into three approaches. Pick the one that fits best.'
-              : planScreen === 'create_mission'
-              ? 'A Mission is one focused block of work. Review the details and launch it when ready.'
-              : 'Each Mission is one focused block of work. Launch one to start executing.'}
+            {planScreen === 'choose_plan' ? 'Choose the approach that fits best.' : planScreen === 'create_mission' ? 'Review the details and launch your mission.' : 'Focus on one mission at a time.'}
           </p>
         </div>
         {planScreen === 'list' && (
-          <button
-            onClick={() => { setPlanScreen('create_mission'); setPrefillInput(null); setAiMission(null); }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-none self-start"
-            style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+          <button onClick={() => { setPlanScreen('create_mission'); setPrefillInput(null); setAiMission(null); }} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-none self-start" style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
             New Mission
           </button>
         )}
       </div>
 
-      {/* Loading spinner */}
       {loadingMessage && (
-        <div
-          className="rounded-xl px-5 py-6 mb-8 flex items-center gap-3"
-          style={{ background: 'rgba(8,19,33,0.85)', border: '1px solid rgba(30,60,100,0.45)' }}
-        >
-          <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0"
-            style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} />
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--color-app-text)' }}>
-              {loadingMessage.title}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>
-              {loadingMessage.sub}
-            </p>
-          </div>
+        <div className="rounded-xl px-5 py-6 mb-8 flex items-center gap-3" style={{ background: 'rgba(8,19,33,0.85)', border: '1px solid rgba(30,60,100,0.45)' }}>
+          <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} />
+          <div><p className="text-sm font-medium" style={{ color: 'var(--color-app-text)' }}>{loadingMessage.title}</p><p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>{loadingMessage.sub}</p></div>
         </div>
       )}
 
-      {/* Plan chooser */}
-      {planScreen === 'choose_plan' && plans && (
-        <PlanChooser
-          plans={plans}
-          onChosen={handlePlanChosen}
-          onDismiss={() => setPlanScreen('create_mission')}
-        />
-      )}
+      {planScreen === 'choose_plan' && plans && <PlanChooser plans={plans} onChosen={handlePlanChosen} onDismiss={() => setPlanScreen('create_mission')} />}
 
-      {/* Mission creation */}
       {planScreen === 'create_mission' && (
-        <div className="mb-8">
-          <CreateMissionPanel
-            tasks={tasks}
-            prefillTask={prefillTask}
-            prefillInput={prefillInput}
-            aiMission={aiMission}
-            onCreated={handleMissionCreated}
-            onCancel={() => {
-              setPlanScreen(plans ? 'choose_plan' : 'list');
-              setPrefillInput(null);
-              setAiMission(null);
-            }}
-          />
-        </div>
+        <div className="mb-8"><CreateMissionPanel tasks={tasks} prefillTask={prefillTask} prefillInput={prefillInput} aiMission={aiMission} onCreated={handleMissionCreated} onCancel={() => { setPlanScreen(plans ? 'choose_plan' : 'list'); setPrefillInput(null); setAiMission(null); }} /></div>
       )}
 
       {/* Loading / error / list */}
       {loading && planScreen === 'list' ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 rounded-full animate-spin mb-3"
-            style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} />
-          <span className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>Loading missions…</span>
-        </div>
+        <div className="flex flex-col items-center justify-center py-20"><div className="w-8 h-8 border-2 rounded-full animate-spin mb-3" style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} /><span className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>Loading missions…</span></div>
       ) : error ? (
-        <div className="rounded-xl p-5 text-center mb-6"
-          style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
+        <div className="rounded-xl p-5 text-center mb-6" style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
           <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
           <button onClick={load} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
             style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
@@ -850,6 +808,61 @@ export default function Mission() {
           </div>
         </div>
       ) : planScreen === 'list' ? (
+        <>
+          {currentMission ? (
+            <section className="mb-8 rounded-2xl p-6 sm:p-7" style={{ background: 'linear-gradient(135deg, rgba(18,32,58,0.96) 0%, rgba(8,19,33,0.98) 100%)', border: '1px solid rgba(184,122,85,0.48)', boxShadow: '0 12px 38px -8px rgba(184,122,85,0.18)' }}>
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentTimer.running ? '#4A8C6A' : 'var(--color-app-mission)' }} />
+                  <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--color-app-mission)' }}>Current Mission</p>
+                </div>
+                <button onClick={() => handleDeleteMission(currentMission.id)} className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent" style={{ color: 'var(--color-app-text-dim)' }} title="Delete mission" aria-label="Delete mission">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}><path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12m-9 0v11m6-11v-11m-3 0V4h6v3m-8 0h10l-1 13H8L7 7z" /></svg>
+                </button>
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl mb-2" style={{ color: 'var(--color-app-text)' }}>{currentMission.title}</h2>
+              <p className="text-sm leading-relaxed max-w-xl" style={{ color: 'var(--color-app-text-muted)' }}>{currentMission.objective || currentMission.next_action || 'A focused block of work ready for you.'}</p>
+
+              <div className="mt-6 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--color-app-text-dim)' }}>Time remaining</p>
+                  <p className="font-mono text-2xl font-bold tabular-nums" style={{ color: 'var(--color-app-gold)' }}>{formatDuration(Math.max(0, currentPlannedSeconds - currentTimer.elapsed))}</p>
+                </div>
+                <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-dim)' }}>{Math.round(currentProgress * 100)}% complete</span>
+              </div>
+              <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(30,60,100,0.45)' }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.round(currentProgress * 100)}%`, background: 'linear-gradient(90deg, #B87A55, #E5B76A)', transition: 'width 0.8s ease' }} />
+              </div>
+              <button onClick={() => handleExecute(currentMission, currentMissionTask)} className="mt-6 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none" style={{ background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)', color: '#050817', boxShadow: '0 4px 16px rgba(184,122,85,0.3)' }}>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" /></svg>
+                {currentMission.status === 'planned' ? 'Start Mission' : 'Continue Mission'}
+              </button>
+            </section>
+          ) : (
+            <section className="mb-8 rounded-2xl p-6" style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--color-app-mission)' }}>Current Mission</p>
+              <h2 className="font-display text-xl mb-1" style={{ color: 'var(--color-app-text)' }}>Nothing is active yet</h2>
+              <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>Choose a task below to turn it into your next focused mission.</p>
+            </section>
+          )}
+
+          {activeMissions.length > (currentMission ? 1 : 0) && (
+            <section className="mb-8">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--color-app-text-dim)' }}>Upcoming Missions</p>
+              <div className="space-y-2">{activeMissions.filter(m => m.id !== currentMission?.id).map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div>
+            </section>
+          )}
+
+          {(() => {
+            const missionTaskIds = new Set(activeMissions.map(m => m.task_id).filter(Boolean));
+            const availableTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived' && !missionTaskIds.has(t.id));
+            if (availableTasks.length === 0) return null;
+            return <section className="mb-8"><p className="text-xs font-bold uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--color-app-text-dim)' }}>Other Tasks</p><div className="space-y-2">{availableTasks.map(t => <div key={t.id} className="rounded-lg px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}><span className="text-sm truncate" style={{ color: 'var(--color-app-text)' }}>{t.title}</span><button onClick={() => { setPrefillInput(null); setAiMission(null); navigate('/mission', { state: { prefillTask: t } }); setPlanScreen('create_mission'); }} className="text-xs font-medium flex-shrink-0 cursor-pointer border-none bg-transparent" style={{ color: 'var(--color-app-mission)' }}>Start Mission</button></div>)}</div></section>;
+          })()}
+
+          {doneMissions.length > 0 && <details className="group"><summary className="flex items-center gap-2 cursor-pointer list-none text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-app-text-dim)' }}><svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>Completed Missions ({doneMissions.length})</summary><div className="space-y-2 mt-3">{doneMissions.map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div></details>}
+        </>
+      ) : showLegacyList ? (
         <>
           {/* Contextual guidance banner */}
           <div className="rounded-xl px-5 py-3.5 mb-6 flex items-start gap-3"
@@ -993,7 +1006,7 @@ export default function Mission() {
                     </span>
                     {topTask.deadline && (
                       <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
-                        Due {new Date(topTask.deadline).toLocaleDateString()}
+                        Due {new Date(topTask.deadline!).toLocaleDateString()}
                       </span>
                     )}
                   </div>

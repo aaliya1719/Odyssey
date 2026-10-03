@@ -189,6 +189,10 @@ export const localSessions = {
   },
 
   start(missionId: string): FocusSession {
+    const sessions = load<FocusSession>(KEYS.sessions);
+    const existing = sessions.find(s => s.mission_id === missionId && !s.ended_at);
+    if (existing) return existing;
+
     const session: FocusSession = {
       id:               uuid(),
       user_id:          ANON_USER_ID,
@@ -199,7 +203,6 @@ export const localSessions = {
       completed:        false,
       created_at:       now(),
     };
-    const sessions = load<FocusSession>(KEYS.sessions);
     sessions.unshift(session);
     save(KEYS.sessions, sessions);
     return session;

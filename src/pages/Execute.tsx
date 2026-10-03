@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { missionService } from '../services/missionService';
-import { focusService } from '../services/focusService';
 import { taskService } from '../services/taskService';
 import { formatDuration } from '../components/FocusTimer';
-import type { Mission, Task, FocusSession } from '../types/database';
+import { useMissionTimer } from '../hooks/useMissionTimer';
+import type { Mission, Task } from '../types/database';
 
 // XP values mirror Journey.tsx — single source of truth concept
 const XP_PER_MISSION = 250;
@@ -19,12 +19,21 @@ export default function Execute() {
 
   const [mission, setMission] = useState<Mission | null>(initialMission);
 
-  // ── Timer state (mirrors FocusTimer internals, lifted here for layout access) ──
-  const [session, setSession]   = useState<FocusSession | null>(null);
-  const [elapsed, setElapsed]   = useState(0);
-  const [running, setRunning]   = useState(false);
-  const [ending, setEnding]     = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (initialMission) return;
+    (async () => {
+      try {
+        const missions = await missionService.getMissions();
+        const resumable = missions.find(item => item.status === 'active' || item.status === 'paused');
+        if (resumable) setMission(resumable);
+      } catch (error) {
+        console.error('Failed to restore active mission:', error);
+      }
+    })();
+  }, [initialMission]);
+
+  const timer = useMissionTimer(mission, updatedMission => setMission(updatedMission));
+  const { elapsed, running, ending } = timer;
 
   // Next recommendation state for post-completion flow
   const [nextRecommendation, setNextRecommendation] = useState<{
@@ -33,15 +42,6 @@ export default function Execute() {
     task?: Task;
   } | null>(null);
   const [loadedNext, setLoadedNext] = useState(false);
-
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => setElapsed(p => p + 1), 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running]);
 
   const plannedSeconds = (mission?.planned_minutes ?? 25) * 60;
   const progress       = Math.min(elapsed / plannedSeconds, 1);
@@ -95,53 +95,15 @@ export default function Execute() {
   };
 
   // ── Timer actions ──────────────────────────────────────────────────────────────
-
-  const handleStart = async () => {
-    if (!mission) return;
-    try {
-      let m = mission;
-      if (m.status !== 'active') {
-        m = await missionService.activateMission(m.id);
-        setMission(m);
-      }
-      const s = await focusService.startSession(m.id);
-      setSession(s);
-      setElapsed(0);
-      setRunning(true);
-    } catch (e) { console.error(e); }
-  };
-
-  const handlePause = async () => {
-    if (!mission) return;
-    setRunning(false);
-    if (session) {
-      await focusService.endSession(session.id, false);
-      setSession(null);
-    }
-    const m = await missionService.pauseMission(mission.id);
-    setMission(m);
-  };
-
-  const handleResume = async () => {
-    if (!mission) return;
-    const m = await missionService.activateMission(mission.id);
-    setMission(m);
-    const s = await focusService.startSession(m.id);
-    setSession(s);
-    setRunning(true);
-  };
+  const handleStart = async () => { try { await timer.start(); } catch (e) { console.error(e); } };
+  const handlePause = async () => { try { await timer.pause(); } catch (e) { console.error(e); } };
+  const handleResume = async () => { try { await timer.resume(); } catch (e) { console.error(e); } };
 
   const handleComplete = async () => {
     if (!mission || ending) return;
-    setEnding(true);
-    setRunning(false);
     try {
-      if (session) {
-        await focusService.endSession(session.id, true);
-        setSession(null);
-      }
-      const m = await missionService.completeMission(mission.id);
-      setMission(m);
+      await timer.complete();
+      const m = await missionService.getMission(mission.id);
       if (linkedTask || m.task_id) {
         try {
           await taskService.completeTask((linkedTask?.id || m.task_id)!);
@@ -151,7 +113,6 @@ export default function Execute() {
       }
       await loadNextMove(m.id, linkedTask?.id || m.task_id || undefined);
     } catch (e) { console.error(e); }
-    finally { setEnding(false); }
   };
 
   // ── Derived display helpers ────────────────────────────────────────────────────
@@ -635,8 +596,6 @@ export default function Execute() {
                       if (nextRecommendation.type === 'mission' && nextRecommendation.mission) {
                         navigate('/execute', { state: { mission: nextRecommendation.mission } });
                         setMission(nextRecommendation.mission);
-                        setElapsed(0);
-                        setRunning(false);
                         setLoadedNext(false);
                       } else if (nextRecommendation.type === 'task' && nextRecommendation.task) {
                         navigate('/mission', { state: { prefillTask: nextRecommendation.task } });

@@ -79,9 +79,10 @@ export const missionService = {
   },
 
   async activateMission(id: string): Promise<Mission> {
+    const mission = await missionService.getMission(id);
     return missionService.updateMission(id, {
       status: 'active',
-      started_at: new Date().toISOString(),
+      started_at: mission.started_at ?? new Date().toISOString(),
     });
   },
 

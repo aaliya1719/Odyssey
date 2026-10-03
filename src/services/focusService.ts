@@ -12,6 +12,12 @@ export const focusService = {
     const user = await getUser();
     if (!user) return Promise.resolve(localSessions.start(missionId));
 
+    const { data: existing, error: existingError } = await supabase
+      .from('focus_sessions').select('*').eq('mission_id', missionId).is('ended_at', null)
+      .order('started_at', { ascending: false }).limit(1).maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) return existing as FocusSession;
+
     const { data, error } = await supabase
       .from('focus_sessions')
       .insert({

@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { missionService } from '../services/missionService';
-import { focusService } from '../services/focusService';
-import type { FocusSession, Mission } from '../types/database';
+import { useMissionTimer } from '../hooks/useMissionTimer';
+import type { Mission } from '../types/database';
 
 export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -19,72 +17,10 @@ export interface FocusTimerProps {
 }
 
 export default function FocusTimer({ mission, onMissionUpdate, prominent = false }: FocusTimerProps) {
-  const [session, setSession] = useState<FocusSession | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [ending, setEnding] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { elapsed, running, ending, start, pause, resume, complete } = useMissionTimer(mission, onMissionUpdate);
 
   const planned = mission.planned_minutes ?? 25;
   const plannedSeconds = planned * 60;
-
-  const start = async () => {
-    try {
-      let m = mission;
-      if (m.status !== 'active') {
-        m = await missionService.activateMission(m.id);
-        onMissionUpdate(m);
-      }
-      const s = await focusService.startSession(m.id);
-      setSession(s);
-      setElapsed(0);
-      setRunning(true);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const pause = async () => {
-    setRunning(false);
-    if (session) {
-      await focusService.endSession(session.id, false);
-      setSession(null);
-    }
-    const m = await missionService.pauseMission(mission.id);
-    onMissionUpdate(m);
-  };
-
-  const resume = async () => {
-    const m = await missionService.activateMission(mission.id);
-    onMissionUpdate(m);
-    const s = await focusService.startSession(m.id);
-    setSession(s);
-    setRunning(true);
-  };
-
-  const complete = async () => {
-    setEnding(true);
-    setRunning(false);
-    try {
-      if (session) {
-        await focusService.endSession(session.id, true);
-        setSession(null);
-      }
-      const m = await missionService.completeMission(mission.id);
-      onMissionUpdate(m);
-    } finally {
-      setEnding(false);
-    }
-  };
-
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running]);
 
   const progress = Math.min(elapsed / plannedSeconds, 1);
   const ringSize  = prominent ? 192 : 128;

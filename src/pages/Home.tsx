@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
+import { missionService } from '../services/missionService';
 import { interpretCapture } from '../services/aiService';
+import { useMissionTimer } from '../hooks/useMissionTimer';
+import { formatDuration } from '../components/FocusTimer';
 import type {
   CaptureContext,
   AIInterpretation,
@@ -11,7 +14,7 @@ import type {
   EnergyLevel,
   PlanHorizon,
 } from '../lib/odysseyTypes';
-import type { Task, TaskPriority } from '../types/database';
+import type { Mission, Task, TaskPriority } from '../types/database';
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
 
@@ -816,6 +819,7 @@ export default function Home() {
   const navigate  = useNavigate();
 
   const [tasks,    setTasks]    = useState<Task[]>([]);
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
 
@@ -836,6 +840,8 @@ export default function Home() {
 
   useEffect(() => { loadTasks(); }, []);
 
+  useEffect(() => { loadMissions(); }, [user?.id]);
+
   useEffect(() => {
     if (!loading && tasks.length > 0 && screen === 'capture') {
       setCaptureExpanded(false);
@@ -852,6 +858,14 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMissions = async () => {
+    try {
+      setMissions(await missionService.getMissions());
+    } catch (err) {
+      console.warn('Failed to load missions for resume prompt:', err);
     }
   };
 
@@ -950,6 +964,12 @@ export default function Home() {
 
   const activeTasks    = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
   const completedTasks = tasks.filter(t => t.status === 'completed');
+  const resumableMission = missions.find(m => m.status === 'active' || m.status === 'paused') ?? null;
+  const missionTimer = useMissionTimer(resumableMission, updatedMission => {
+    setMissions(previous => previous.map(m => m.id === updatedMission.id ? updatedMission : m));
+  });
+  const missionDuration = (resumableMission?.planned_minutes ?? 25) * 60;
+  const missionProgress = Math.min(missionTimer.elapsed / missionDuration, 1);
   const displayName    = user?.email?.split('@')[0] ?? null;
 
   return (
@@ -968,6 +988,42 @@ export default function Home() {
           Dump everything here — tasks, deadlines, goals, anything weighing on you. Odyssey will sort it out and tell you what to do next.
         </p>
       </div>
+
+      {resumableMission && (
+        <section
+          className="rounded-xl p-5 mb-8"
+          style={{
+            background: 'linear-gradient(135deg, rgba(18,32,58,0.92) 0%, rgba(8,19,33,0.96) 100%)',
+            border: '1px solid rgba(184,122,85,0.38)',
+            boxShadow: '0 8px 28px -8px rgba(184,122,85,0.16)',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: missionTimer.running ? '#4A8C6A' : 'var(--color-app-mission)' }} />
+            <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-app-mission)' }}>
+              Pick up where you left off
+            </p>
+          </div>
+          <h2 className="font-display text-xl mb-1" style={{ color: 'var(--color-app-text)' }}>{resumableMission.title}</h2>
+          <div className="flex items-center justify-between gap-3 mt-4 mb-2">
+            <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-muted)' }}>
+              {formatDuration(Math.max(0, missionDuration - missionTimer.elapsed))} remaining
+            </span>
+            <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-dim)' }}>{Math.round(missionProgress * 100)}% complete</span>
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ backgroundColor: 'rgba(30,60,100,0.42)' }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.round(missionProgress * 100)}%`, background: 'linear-gradient(90deg, #B87A55, #E5B76A)' }} />
+          </div>
+          <button
+            onClick={() => navigate('/execute', { state: { mission: resumableMission } })}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold cursor-pointer border-none"
+            style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
+          >
+            CONTINUE MISSION
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+          </button>
+        </section>
+      )}
 
       {/* Capture section */}
       <div className="mb-8">
