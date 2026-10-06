@@ -4,14 +4,22 @@
  */
 import https from 'https';
 
-const API_KEY = 'sb_publishable_6XO0BUlauW57RyYPCqVygg_pwxCUZ1B';
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const API_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !API_KEY) {
+  console.error('Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running this integration test.');
+  process.exit(1);
+}
+
+const endpoint = new URL('/functions/v1/suggest-mission', supabaseUrl);
 
 function post(body) {
   return new Promise((resolve) => {
     const json = JSON.stringify(body);
     const opts = {
-      hostname: 'iiywpvjtvzkkwxfgrqnd.supabase.co',
-      path: '/functions/v1/suggest-mission',
+      hostname: endpoint.hostname,
+      path: endpoint.pathname,
       method: 'POST',
       headers: {
         'apikey':         API_KEY,
