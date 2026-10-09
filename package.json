@@ -1,23 +1,12 @@
 {
   "name": "odyssey",
-  "version": "0.1.0",
-  "description": "A context-aware planning and focus app that turns intention into action.",
-  "license": "Apache-2.0",
-  "author": "Aaliya",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/aaliya1719/Odyssey.git"
-  },
-  "bugs": {
-    "url": "https://github.com/aaliya1719/Odyssey/issues"
-  },
-  "homepage": "https://github.com/aaliya1719/Odyssey#readme",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -39,7 +28,6 @@
     "supabase": "^2.115.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.3"
+    "vite": "^8.2.2"
   }
 }

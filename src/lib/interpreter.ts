@@ -65,7 +65,7 @@ function parseDeadline(text: string): DeadlineParse | null {
   today.setHours(23, 59, 0, 0);
 
   // "today"
-  if (/\b(today|tonight)\b/.test(lower)) {
+  if (/\btoday\b/.test(lower)) {
     return { label: 'today', date: today };
   }
   // "tomorrow"
@@ -154,7 +154,7 @@ function cleanTitle(text: string): string {
     .replace(/\b(due|by|on|before|for|until|at|around)\s+(next\s+)?(sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)\b/gi, '')
     .replace(/\bnext\s+(sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)\b/gi, '')
     .replace(/\b(sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)\b/gi, '')
-    .replace(/\b(today|tonight)\b/gi, '')
+    .replace(/\btoday\b/gi, '')
     .replace(/\btomorrow\b/gi, '')
     .replace(/\bthis\s+week\b/gi, '')
     .replace(/\bnext\s+week\b/gi, '')
