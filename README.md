@@ -161,7 +161,7 @@ Please report suspected vulnerabilities privately rather than posting sensitive 
 
 ## 📄 License
 
-Odyssey is licensed under the [Apache License 2.0](LICENSE).
+Odyssey is distributed under the [Apache License, Version 2.0](LICENSE). The license permits use, modification, and redistribution subject to its terms, including preservation of required notices.
 
 ---
 
