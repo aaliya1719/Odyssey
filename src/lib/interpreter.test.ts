@@ -8,46 +8,49 @@ function deadlineFor(input: string, referenceDate: string) {
   return result.items[0];
 }
 
+function localDate(date: string, hour: number, minute = 0) {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, hour, minute).toISOString();
+}
+
 function localEndOfDay(date: string) {
-  const day = new Date(`${date}T12:00:00.000Z`);
-  day.setHours(23, 59, 0, 0);
-  return day.toISOString();
+  return localDate(date, 23, 59);
 }
 
 test('bare Friday resolves to Friday when reference date is Friday', () => {
-  const item = deadlineFor('Finish report by Friday', '2026-10-23T10:00:00.000Z');
+  const item = deadlineFor('Finish report by Friday', localDate('2026-10-23', 12));
   expect(item.deadlineLabel).toBe('Fri');
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week resolves to the current Friday on Friday', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-23T10:00:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-23', 12));
   expect(item.deadlineLabel).toBe('this week');
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Saturday resolves to the Friday just passed', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-24T10:00:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-24', 12));
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Sunday resolves to the Friday just passed', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-25T10:00:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-25', 12));
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Monday resolves to Friday later in the same week', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-19T10:00:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-19', 12));
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('bare Friday on Saturday resolves to next Friday', () => {
-  const item = deadlineFor('Finish report by Friday', '2026-10-24T10:00:00.000Z');
+  const item = deadlineFor('Finish report by Friday', localDate('2026-10-24', 12));
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-30'));
 });
 
 test('next Friday on Friday resolves to the following Friday', () => {
-  const item = deadlineFor('Finish report next Friday', '2026-10-23T10:00:00.000Z');
+  const item = deadlineFor('Finish report next Friday', localDate('2026-10-23', 12));
   expect(item.isoDeadline).toBe(localEndOfDay('2026-10-30'));
 });
 

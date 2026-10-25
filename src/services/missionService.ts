@@ -8,7 +8,7 @@ export interface CreateMissionInput {
   title: string;
   objective?: string | null;
   next_action?: string | null;
-  planned_minutes?: number | null;
+  planned_minutes: number;
 }
 
 export interface UpdateMissionInput {
@@ -63,7 +63,7 @@ export const missionService = {
         title:           input.title,
         objective:       input.objective ?? null,
         next_action:     input.next_action ?? null,
-        planned_minutes: input.planned_minutes ?? null,
+        planned_minutes: input.planned_minutes,
         status:          'planned',
       })
       .select()

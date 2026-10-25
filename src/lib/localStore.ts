@@ -146,7 +146,7 @@ export const localMissions = {
       title:           input.title,
       objective:       input.objective ?? null,
       next_action:     input.next_action ?? null,
-      planned_minutes: input.planned_minutes ?? null,
+      planned_minutes: input.planned_minutes,
       status:          'planned',
       started_at:      null,
       completed_at:    null,

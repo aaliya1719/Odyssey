@@ -1,4 +1,5 @@
 import type { Task } from '../types/database';
+import { safeMissionDuration } from './missionDuration';
 
 export interface DerivedMission {
   title: string;
@@ -30,7 +31,7 @@ export function deriveMissionFromTask(task: Task | { title: string; description?
   let title = rawTitle;
   let objective = '';
   let nextAction = '';
-  const minutes = task.estimated_minutes || (task.priority === 'urgent' ? 50 : task.priority === 'high' ? 45 : 25);
+  const minutes = safeMissionDuration(task.estimated_minutes ?? (task.priority === 'urgent' ? 50 : task.priority === 'high' ? 45 : 25));
 
   // 1. Study / Exam / Revision / Academic prep
   if (/^(prepare for|study for|revise for|exam|test|quiz)/i.test(rawTitle) || lower.includes('exam') || lower.includes('revision') || lower.includes('study')) {
