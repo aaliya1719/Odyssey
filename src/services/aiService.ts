@@ -21,6 +21,7 @@ import type {
 } from '../lib/odysseyTypes';
 import { interpret } from '../lib/interpreter';          // deterministic fallback
 import { buildApproaches } from '../lib/planner';         // deterministic fallback
+import { isValidMissionDuration } from '../lib/missionDuration';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -261,7 +262,7 @@ export async function suggestMissionFromPlan(
 
   if (
     data?.title && data?.objective && data?.next_action &&
-    typeof data?.planned_minutes === 'number'
+    isValidMissionDuration(data?.planned_minutes)
   ) {
     return {
       title:           data.title,
@@ -306,7 +307,7 @@ export async function suggestMissionForTask(
 
   if (
     data?.title && data?.objective && data?.next_action &&
-    typeof data?.planned_minutes === 'number'
+    isValidMissionDuration(data?.planned_minutes)
   ) {
     return {
       title:           data.title,

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { localMissions } from '../lib/localStore';
+import { isValidMissionDuration } from '../lib/missionDuration';
 import type { Mission, MissionStatus } from '../types/database';
 
 export interface CreateMissionInput {
@@ -48,6 +49,9 @@ export const missionService = {
   },
 
   async createMission(input: CreateMissionInput): Promise<Mission> {
+    if (!isValidMissionDuration(input.planned_minutes)) {
+      throw new RangeError('Planned time must be a whole number from 1 to 240 minutes.');
+    }
     const user = await getUser();
     if (!user) return Promise.resolve(localMissions.create(input));
 
@@ -69,6 +73,9 @@ export const missionService = {
   },
 
   async updateMission(id: string, updates: UpdateMissionInput): Promise<Mission> {
+    if ('planned_minutes' in updates && !isValidMissionDuration(updates.planned_minutes)) {
+      throw new RangeError('Planned time must be a whole number from 1 to 240 minutes.');
+    }
     const user = await getUser();
     if (!user) return Promise.resolve(localMissions.update(id, updates));
 

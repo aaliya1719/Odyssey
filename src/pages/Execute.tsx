@@ -4,6 +4,7 @@ import { missionService } from '../services/missionService';
 import { taskService } from '../services/taskService';
 import { formatDuration } from '../components/FocusTimer';
 import { useMissionTimer } from '../hooks/useMissionTimer';
+import { safeMissionDuration } from '../lib/missionDuration';
 import type { Mission, Task } from '../types/database';
 
 // XP values mirror Journey.tsx — single source of truth concept
@@ -43,7 +44,7 @@ export default function Execute() {
   } | null>(null);
   const [loadedNext, setLoadedNext] = useState(false);
 
-  const plannedSeconds = (mission?.planned_minutes ?? 25) * 60;
+  const plannedSeconds = safeMissionDuration(mission?.planned_minutes) * 60;
   const progress       = Math.min(elapsed / plannedSeconds, 1);
   const remaining      = Math.max(0, plannedSeconds - elapsed);
 

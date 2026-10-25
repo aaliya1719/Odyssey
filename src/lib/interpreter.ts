@@ -95,12 +95,6 @@ function parseDeadline(text: string, referenceDate: Date): DeadlineParse | null 
   if (nextDayMatch) {
     const dayNum = DAY_NAMES[nextDayMatch[1]];
     const d = nextWeekdayDate(dayNum, today);
-  // "next <dayname>" — the next occurrence of that weekday, not an extra week later.
-  // If today is the named weekday, "next" means seven days from today.
-  const nextDayMatch = lower.match(/\bnext\s+(sunday|sun|monday|mon|tuesday|tue|wednesday|wed|thursday|thu|friday|fri|saturday|sat)\b/);
-  if (nextDayMatch) {
-    const dayNum = DAY_NAMES[nextDayMatch[1]];
-    const d = nextWeekdayDate(dayNum);
     const label = 'next ' + nextDayMatch[1].charAt(0).toUpperCase() + nextDayMatch[1].slice(1, 3);
     return { label, date: d };
   }
@@ -157,12 +151,6 @@ function cleanTitle(text: string): string {
     .trim();
 }
 
-function splitClauses(input: string): string[] {
-  const normalised = input.replace(/\r?\n/g, ', ');
-  return normalised
-    .split(/,\s*|\s*;\s*|\s+and\s+|\.\s+(?=[A-Z])/)
-    .map(s => s.trim())
-    .filter(s => s.length > 2);
 // ─── Sentence / clause splitting ─────────────────────────────────────────────
 
 /**

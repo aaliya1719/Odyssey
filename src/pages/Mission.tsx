@@ -250,6 +250,7 @@ function PlanCard({
 import { deriveMissionFromTask } from '../lib/missionDerivation';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { formatDuration } from '../components/FocusTimer';
+import { parseMissionDuration, safeMissionDuration, MAX_MISSION_MINUTES } from '../lib/missionDuration';
 
 // ─── Mission creation panel ───────────────────────────────────────────────────
 
@@ -356,6 +357,11 @@ function CreateMissionPanel({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    const minutes = parseMissionDuration(plannedMinutes);
+    if (minutes === null) {
+      setErr('Planned time must be a whole number from 1 to 240 minutes.');
+      return;
+    }
     setSaving(true); setErr(null);
     try {
       const m = await missionService.createMission({
@@ -363,7 +369,7 @@ function CreateMissionPanel({
         task_id:         selectedTaskId || null,
         objective:       objective.trim()  || null,
         next_action:     nextAction.trim() || null,
-        planned_minutes: plannedMinutes ? parseInt(plannedMinutes, 10) : null,
+        planned_minutes: minutes,
       });
       onCreated(m);
     } catch (e: unknown) {
@@ -465,7 +471,7 @@ function CreateMissionPanel({
             style={{ color: 'var(--color-app-text-muted)' }}>
             Planned Time (minutes)
           </label>
-          <input type="number" min="1" value={plannedMinutes}
+          <input type="number" min="1" max={MAX_MISSION_MINUTES} step="1" required value={plannedMinutes}
             onChange={e => setPlannedMinutes(e.target.value)} className="app-input w-full" />
         </div>
 
@@ -723,7 +729,7 @@ export default function Mission() {
   const currentTimer = useMissionTimer(currentMission, updatedMission => {
     setMissions(previous => previous.map(m => m.id === updatedMission.id ? updatedMission : m));
   });
-  const currentPlannedSeconds = (currentMission?.planned_minutes ?? 25) * 60;
+  const currentPlannedSeconds = safeMissionDuration(currentMission?.planned_minutes) * 60;
   const currentProgress = Math.min(currentTimer.elapsed / currentPlannedSeconds, 1);
   const showLegacyList = false;
 
