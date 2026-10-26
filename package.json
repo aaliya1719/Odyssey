@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "TZ=UTC vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

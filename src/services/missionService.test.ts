@@ -1,4 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+    },
+    from: vi.fn(),
+  },
+}));
+
 import { missionService } from './missionService';
 import type { CreateMissionInput } from './missionService';
 

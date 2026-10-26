@@ -5,6 +5,10 @@ import { missionService } from '../services/missionService';
 import { generatePlans, suggestMissionFromPlan, suggestMissionForTask } from '../services/aiService';
 import type { Task, Mission } from '../types/database';
 import type { CreateMissionInput } from '../services/missionService';
+import { deriveMissionFromTask } from '../lib/missionDerivation';
+import { useMissionTimer } from '../hooks/useMissionTimer';
+import { formatDuration } from '../components/FocusTimer';
+import { parseMissionDuration, safeMissionDuration, MAX_MISSION_MINUTES } from '../lib/missionDuration';
 import type {
   CaptureContext,
   AIInterpretation,
@@ -246,11 +250,6 @@ function PlanCard({
     </div>
   );
 }
-
-import { deriveMissionFromTask } from '../lib/missionDerivation';
-import { useMissionTimer } from '../hooks/useMissionTimer';
-import { formatDuration } from '../components/FocusTimer';
-import { parseMissionDuration, safeMissionDuration, MAX_MISSION_MINUTES } from '../lib/missionDuration';
 
 // ─── Mission creation panel ───────────────────────────────────────────────────
 
