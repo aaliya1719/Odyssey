@@ -1,5 +1,6 @@
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import type { Mission } from '../types/database';
+import { safeMissionDuration } from '../lib/missionDuration';
 
 export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -19,7 +20,7 @@ export interface FocusTimerProps {
 export default function FocusTimer({ mission, onMissionUpdate, prominent = false }: FocusTimerProps) {
   const { elapsed, running, ending, start, pause, resume, complete } = useMissionTimer(mission, onMissionUpdate);
 
-  const planned = mission.planned_minutes ?? 25;
+  const planned = safeMissionDuration(mission.planned_minutes);
   const plannedSeconds = planned * 60;
 
   const progress = Math.min(elapsed / plannedSeconds, 1);

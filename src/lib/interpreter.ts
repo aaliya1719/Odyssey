@@ -151,6 +151,8 @@ function cleanTitle(text: string): string {
     .trim();
 }
 
+// ─── Sentence / clause splitting ─────────────────────────────────────────────
+
 /**
  * Split free-form input into individual clauses.
  * Handles: comma lists, "and" between multi-word phrases, semicolons, sentence boundaries.

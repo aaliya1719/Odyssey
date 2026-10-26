@@ -18,6 +18,8 @@
  * Model: gemini-flash-latest (fast, low-latency, good instruction following)
  */
 
+import { isValidMissionDuration } from '../_shared/missionDuration.ts';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -415,7 +417,7 @@ function validateMission(parsed: unknown): boolean {
     typeof p.title === 'string' && (p.title as string).trim().length > 0 &&
     typeof p.objective === 'string' && (p.objective as string).trim().length > 0 &&
     typeof p.next_action === 'string' && (p.next_action as string).trim().length > 0 &&
-    typeof p.planned_minutes === 'number' &&
+    isValidMissionDuration(p.planned_minutes) &&
     typeof p.reasoning === 'string'
   );
 }
@@ -555,7 +557,7 @@ Deno.serve(async (req: Request) => {
 
     if (!validateMission(parsed)) {
       console.error('mission validation fail:', JSON.stringify(parsed).slice(0, 200));
-      return new Response(JSON.stringify({ error: 'Invalid mission: required text fields must be non-empty and planned_minutes must be one of 25, 30, 45, 50, 60, or 90.' }), {
+      return new Response(JSON.stringify({ error: 'Invalid mission: required text fields must be non-empty and planned_minutes must be a whole number from 1 to 240.' }), {
         status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
@@ -565,7 +567,7 @@ Deno.serve(async (req: Request) => {
       title:           (m.title as string).trim(),
       objective:       (m.objective as string).trim(),
       next_action:     (m.next_action as string).trim(),
-      planned_minutes: Number(m.planned_minutes) || 25,
+      planned_minutes: m.planned_minutes,
       reasoning:       (m.reasoning as string).trim(),
     }), {
       status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },

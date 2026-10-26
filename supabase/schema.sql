@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.missions (
   title TEXT NOT NULL,
   objective TEXT,
   next_action TEXT,
-  planned_minutes INTEGER,
+  planned_minutes INTEGER NOT NULL DEFAULT 25 CHECK (planned_minutes BETWEEN 1 AND 240),
   status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'active', 'paused', 'completed', 'abandoned')),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,

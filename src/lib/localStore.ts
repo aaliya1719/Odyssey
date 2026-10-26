@@ -23,6 +23,7 @@ import type {
   UpdateTaskInput,
 } from '../types/database';
 import type { CreateMissionInput, UpdateMissionInput } from '../services/missionService';
+import { isValidMissionDuration } from './missionDuration';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -139,6 +140,9 @@ export const localMissions = {
   },
 
   create(input: CreateMissionInput): Mission {
+    if (!isValidMissionDuration(input.planned_minutes)) {
+      throw new RangeError('Planned time must be a whole number from 1 to 240 minutes.');
+    }
     const mission: Mission = {
       id:              uuid(),
       user_id:         ANON_USER_ID,
@@ -146,7 +150,7 @@ export const localMissions = {
       title:           input.title,
       objective:       input.objective ?? null,
       next_action:     input.next_action ?? null,
-      planned_minutes: input.planned_minutes ?? null,
+      planned_minutes: input.planned_minutes,
       status:          'planned',
       started_at:      null,
       completed_at:    null,
@@ -159,6 +163,9 @@ export const localMissions = {
   },
 
   update(id: string, updates: UpdateMissionInput): Mission {
+    if ('planned_minutes' in updates && !isValidMissionDuration(updates.planned_minutes)) {
+      throw new RangeError('Planned time must be a whole number from 1 to 240 minutes.');
+    }
     const missions = load<Mission>(KEYS.missions);
     const idx = missions.findIndex(m => m.id === id);
     if (idx === -1) throw new Error(`Mission ${id} not found`);

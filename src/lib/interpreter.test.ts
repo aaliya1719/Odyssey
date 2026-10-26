@@ -1,5 +1,6 @@
-import { describe, it, test, expect } from 'vitest';
-import { interpret, splitClauses } from './interpreter';
+
+import { test, describe, expect, it } from 'vitest';
+import { interpret, splitClauses } from './interpreter.ts';
 
 function deadlineFor(input: string, referenceDate: string) {
   const result = interpret(input, new Date(referenceDate));
@@ -7,41 +8,50 @@ function deadlineFor(input: string, referenceDate: string) {
   return result.items[0];
 }
 
+function localDate(date: string, hour: number, minute = 0) {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, hour, minute).toISOString();
+}
+
+function localEndOfDay(date: string) {
+  return localDate(date, 23, 59);
+}
+
 test('bare Friday resolves to Friday when reference date is Friday', () => {
-  const item = deadlineFor('Finish report by Friday', '2026-10-23T10:00:00.000Z');
+  const item = deadlineFor('Finish report by Friday', localDate('2026-10-23', 12));
   expect(item.deadlineLabel).toBe('Fri');
-  expect(item.isoDeadline).toBe('2026-10-23T23:59:00.000Z');
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week resolves to the current Friday on Friday', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-23T10:00:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-23', 12));
   expect(item.deadlineLabel).toBe('this week');
-  expect(item.isoDeadline).toBe('2026-10-23T23:59:00.000Z');
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Saturday resolves to the Friday just passed', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-24T10:00:00.000Z');
-  expect(item.isoDeadline).toBe('2026-10-23T23:59:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-24', 12));
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Sunday resolves to the Friday just passed', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-25T10:00:00.000Z');
-  expect(item.isoDeadline).toBe('2026-10-23T23:59:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-25', 12));
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('this week on Monday resolves to Friday later in the same week', () => {
-  const item = deadlineFor('Finish report this week', '2026-10-19T10:00:00.000Z');
-  expect(item.isoDeadline).toBe('2026-10-23T23:59:00.000Z');
+  const item = deadlineFor('Finish report this week', localDate('2026-10-19', 12));
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-23'));
 });
 
 test('bare Friday on Saturday resolves to next Friday', () => {
-  const item = deadlineFor('Finish report by Friday', '2026-10-24T10:00:00.000Z');
-  expect(item.isoDeadline).toBe('2026-10-30T23:59:00.000Z');
+  const item = deadlineFor('Finish report by Friday', localDate('2026-10-24', 12));
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-30'));
 });
 
 test('next Friday on Friday resolves to the following Friday', () => {
-  const item = deadlineFor('Finish report next Friday', '2026-10-23T10:00:00.000Z');
-  expect(item.isoDeadline).toBe('2026-10-30T23:59:00.000Z');
+  const item = deadlineFor('Finish report next Friday', localDate('2026-10-23', 12));
+  expect(item.isoDeadline).toBe(localEndOfDay('2026-10-30'));
 });
 
 
@@ -57,14 +67,14 @@ const weekdays = [
   { name: 'Saturday', day: 6 },
 ];
 
-function utcDateForWeekday(day: number) {
-  // 2026-10-19 is a Monday; use midday UTC to avoid timezone boundary issues.
-  return new Date(Date.UTC(2026, 9, 18 + day, 12, 0, 0));
+function dateForWeekday(day: number) {
+  // 2026-10-18 is a Sunday; use local midday to avoid timezone boundaries.
+  return new Date(2026, 9, 18 + day, 12, 0, 0);
 }
 
 for (const target of weekdays) {
   test(`next ${target.name} entered on ${target.name} means one week later`, () => {
-    const reference = utcDateForWeekday(target.day);
+    const reference = dateForWeekday(target.day);
     const item = deadlineFor(`Finish report next ${target.name}`, reference.toISOString());
     const expected = new Date(reference);
     expected.setDate(expected.getDate() + 7);
@@ -77,7 +87,7 @@ for (const current of weekdays) {
   for (const target of weekdays) {
     if (current.day === target.day) continue;
     test(`next ${target.name} entered on ${current.name} resolves to the next occurrence`, () => {
-      const reference = utcDateForWeekday(current.day);
+      const reference = dateForWeekday(current.day);
       const item = deadlineFor(`Finish report next ${target.name}`, reference.toISOString());
       const expected = new Date(reference);
       const diff = (target.day - current.day + 7) % 7;
@@ -87,7 +97,6 @@ for (const current of weekdays) {
     });
   }
 }
-
 describe('splitClauses', () => {
   it.each([
     'Research and Development project proposal',
