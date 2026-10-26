@@ -325,9 +325,9 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
                   disabled={interpreting}
                   className="flex-1 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all"
                   style={{
-                    backgroundColor: energy === opt.value ? `${opt.color}20` : 'transparent',
+                    backgroundColor: energy === opt.value ? `color-mix(in srgb, ${opt.color} 20%, transparent)` : 'transparent',
                     color:           energy === opt.value ? opt.color : 'var(--color-app-text-dim)',
-                    borderColor:     energy === opt.value ? `${opt.color}60` : 'rgba(30,60,100,0.3)',
+                    borderColor:     energy === opt.value ? `color-mix(in srgb, ${opt.color} 60%, transparent)` : 'rgba(30,60,100,0.3)',
                   }}
                 >
                   {opt.label}

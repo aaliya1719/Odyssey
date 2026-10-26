@@ -83,11 +83,23 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
   const pause = async () => {
     if (!mission) return;
     setRunning(false);
-    const updatedMission = await focusService.transitionMissionTimer(
-      mission.id, session?.id ?? null, 'pause',
-    );
-    onMissionUpdate(updatedMission);
-    await refresh();
+    try {
+      const updatedMission = await focusService.transitionMissionTimer(
+        mission.id, session?.id ?? null, 'pause',
+      );
+      onMissionUpdate(updatedMission);
+      await refresh();
+    } catch (error) {
+      // The service transition is atomic. If it fails, restore the timer's
+      // running state from persisted mission/session data instead of leaving
+      // the UI paused while the session is still open.
+      try {
+        await refresh();
+      } catch (refreshError) {
+        console.error('Failed to restore mission timer after pause error:', refreshError);
+      }
+      throw error;
+    }
   };
 
   const resume = async () => {
@@ -110,6 +122,16 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
       );
       onMissionUpdate(updatedMission);
       await refresh();
+    } catch (error) {
+      // Keep the UI aligned with the persisted state after a failed complete.
+      // In particular, a failed atomic transition must not strand an open
+      // session behind a stopped timer.
+      try {
+        await refresh();
+      } catch (refreshError) {
+        console.error('Failed to restore mission timer after completion error:', refreshError);
+      }
+      throw error;
     } finally {
       setEnding(false);
     }
