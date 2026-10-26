@@ -570,7 +570,7 @@ export default function Journey() {
       {showLog && (
         <div
           className="fixed inset-0 z-50 flex justify-end"
-          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-bg) 75%, transparent)', backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowLog(false); }}
         >
           <div
