@@ -8,20 +8,53 @@ interface ThemeContextValue {
 }
 
 const THEME_STORAGE_KEY = 'odyssey-theme';
+const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function getStoredTheme(): Theme | null {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === 'light' || stored === 'dark' ? stored : null;
+}
+
+function getSystemMediaQuery(): MediaQueryList | null {
+  return typeof window.matchMedia === 'function' ? window.matchMedia(DARK_SCHEME_QUERY) : null;
+}
+
+function getSystemTheme(): Theme {
+  const mediaQuery = getSystemMediaQuery();
+  if (!mediaQuery) return 'dark';
+  return mediaQuery.matches ? 'dark' : 'light';
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
-  });
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme());
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
+  
+  useEffect(() => {
+    const mediaQuery = getSystemMediaQuery();
+    if (!mediaQuery) return;
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (getStoredTheme()) return;
+      setTheme(event.matches ? 'dark' : 'light');
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    setTheme(nextTheme);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme: () => setTheme(current => current === 'dark' ? 'light' : 'dark') }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
