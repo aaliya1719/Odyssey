@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
+import DataPortabilitySection from '../components/DataPortabilitySection';
 import type { Task, Mission, FocusSession } from '../types/database';
 
 // ─── Achievement definitions ─────────────────────────────────────────────────
@@ -241,6 +242,14 @@ export default function Odyssey() {
           </div>
         ))}
       </div>
+
+      {/* Account Data & Portability */}
+      <DataPortabilitySection
+        taskCount={tasks.length}
+        missionCount={missions.length}
+        sessionCount={sessions.length}
+        onDataRestored={load}
+      />
 
       {/* Section label */}
       <div className="flex items-center justify-between mb-4">

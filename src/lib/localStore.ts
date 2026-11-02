@@ -121,6 +121,20 @@ export const localTasks = {
     const tasks = load<Task>(KEYS.tasks).filter(t => t.id !== id);
     save(KEYS.tasks, tasks);
   },
+
+  replaceAll(tasks: Task[]): void {
+    save(KEYS.tasks, tasks);
+  },
+
+  merge(tasks: Task[]): void {
+    const existing = load<Task>(KEYS.tasks);
+    const map = new Map(existing.map(t => [t.id, t]));
+    for (const t of tasks) {
+      map.set(t.id, t);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    save(KEYS.tasks, merged);
+  },
 };
 
 // ─── Mission operations ───────────────────────────────────────────────────────
@@ -178,6 +192,20 @@ export const localMissions = {
   delete(id: string): void {
     const missions = load<Mission>(KEYS.missions).filter(m => m.id !== id);
     save(KEYS.missions, missions);
+  },
+
+  replaceAll(missions: Mission[]): void {
+    save(KEYS.missions, missions);
+  },
+
+  merge(missions: Mission[]): void {
+    const existing = load<Mission>(KEYS.missions);
+    const map = new Map(existing.map(m => [m.id, m]));
+    for (const m of missions) {
+      map.set(m.id, m);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    save(KEYS.missions, merged);
   },
 };
 
@@ -247,6 +275,20 @@ export const localSessions = {
     save(KEYS.sessions, sessions);
     return updated;
   },
+
+  replaceAll(sessions: FocusSession[]): void {
+    save(KEYS.sessions, sessions);
+  },
+
+  merge(sessions: FocusSession[]): void {
+    const existing = load<FocusSession>(KEYS.sessions);
+    const map = new Map(existing.map(s => [s.id, s]));
+    for (const s of sessions) {
+      map.set(s.id, s);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.started_at.localeCompare(a.started_at));
+    save(KEYS.sessions, merged);
+  },
 };
 
 // ─── Utility: clear all local data (useful for "sign in to save" flow) ────────
@@ -268,3 +310,23 @@ export function exportLocalStore() {
     sessions: localSessions.getAll(),
   };
 }
+
+export const localStore = {
+  replaceAll(data: { tasks: Task[]; missions: Mission[]; sessions: FocusSession[] }): void {
+    localTasks.replaceAll(data.tasks);
+    localMissions.replaceAll(data.missions);
+    localSessions.replaceAll(data.sessions);
+  },
+  mergeAll(data: { tasks: Task[]; missions: Mission[]; sessions: FocusSession[] }): void {
+    localTasks.merge(data.tasks);
+    localMissions.merge(data.missions);
+    localSessions.merge(data.sessions);
+  },
+  exportAll() {
+    return exportLocalStore();
+  },
+  clearAll() {
+    clearLocalStore();
+  },
+};
+
