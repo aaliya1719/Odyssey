@@ -26,25 +26,35 @@ function getSystemTheme(): Theme {
   return mediaQuery.matches ? 'dark' : 'light';
 }
 
+function resolveTheme(): Theme {
+  return getStoredTheme() ?? getSystemTheme();
+}
+
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme());
+  const [theme, setTheme] = useState<Theme>(resolveTheme);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  
   useEffect(() => {
-    const mediaQuery = getSystemMediaQuery();
-    if (!mediaQuery) return;
+    const syncTheme = () => setTheme(resolveTheme());
 
-    const handleChange = (event: MediaQueryListEvent) => {
-      if (getStoredTheme()) return;
-      setTheme(event.matches ? 'dark' : 'light');
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === THEME_STORAGE_KEY || event.key === null) syncTheme();
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const mediaQuery = getSystemMediaQuery();
+    mediaQuery?.addEventListener('change', syncTheme);
+    window.addEventListener('storage', handleStorage);
+
+    syncTheme();
+
+    return () => {
+      mediaQuery?.removeEventListener('change', syncTheme);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const toggleTheme = () => {
