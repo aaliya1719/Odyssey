@@ -203,7 +203,9 @@ function DetailPanel({
           {
             label: 'Focus time',
             value: wp.focusMinutes > 0
-              ? `${formatMinutes(wp.focusMinutes)} in ${wp.sessionCount} ${wp.sessionCount === 1 ? 'session' : 'sessions'}`
+              ? wp.sessionCount > 0
+                ? `${formatMinutes(wp.focusMinutes)} in ${wp.sessionCount} ${wp.sessionCount === 1 ? 'session' : 'sessions'}`
+                : formatMinutes(wp.focusMinutes)
               : 'No focus sessions logged',
           },
           { label: 'Planned', value: planned_minutes ? formatMinutes(planned_minutes) : 'Not set' },

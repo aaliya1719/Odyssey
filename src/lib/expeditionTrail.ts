@@ -31,7 +31,7 @@ function toTime(value: string | null | undefined): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
-/** Sum duration_minutes per mission_id. Sessions without a mission are ignored. */
+/** Sum duration_minutes per mission_id and count completed sessions. Sessions without a mission are ignored. */
 export function focusByMission(sessions: FocusSession[]): Map<string, { minutes: number; sessions: number }> {
   const totals = new Map<string, { minutes: number; sessions: number }>();
   for (const s of sessions) {
@@ -39,7 +39,9 @@ export function focusByMission(sessions: FocusSession[]): Map<string, { minutes:
     const entry = totals.get(s.mission_id) ?? { minutes: 0, sessions: 0 };
     const mins = s.duration_minutes;
     if (typeof mins === 'number' && Number.isFinite(mins) && mins > 0) entry.minutes += mins;
-    entry.sessions += 1;
+    // only finished sessions count towards the session total; paused or
+    // incomplete ones still add their minutes above
+    if (s.completed) entry.sessions += 1;
     totals.set(s.mission_id, entry);
   }
   return totals;

@@ -27,7 +27,7 @@ function mission(id: string, over: Partial<Mission> = {}): Mission {
   };
 }
 
-function session(id: string, missionId: string | null, minutes: number | null): FocusSession {
+function session(id: string, missionId: string | null, minutes: number | null, completed = true): FocusSession {
   return {
     id,
     user_id: 'u1',
@@ -35,7 +35,7 @@ function session(id: string, missionId: string | null, minutes: number | null): 
     started_at: '2026-01-10T09:00:00.000Z',
     ended_at: null,
     duration_minutes: minutes,
-    completed: true,
+    completed,
     created_at: '2026-01-10T09:00:00.000Z',
   };
 }
@@ -56,6 +56,11 @@ describe('focusByMission', () => {
   it('treats missing, negative and non-finite durations as zero minutes', () => {
     const totals = focusByMission([session('s1', 'a', null), session('s2', 'a', -5), session('s3', 'a', NaN), session('s4', 'a', 20)]);
     expect(totals.get('a')).toEqual({ minutes: 20, sessions: 4 });
+  });
+
+  it('only counts completed sessions in the session total but still adds their minutes', () => {
+    const totals = focusByMission([session('s1', 'a', 25), session('s2', 'a', 10, false), session('s3', 'a', 5, false)]);
+    expect(totals.get('a')).toEqual({ minutes: 40, sessions: 1 });
   });
 });
 
