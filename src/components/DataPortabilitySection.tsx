@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { portabilityService } from '../services/portabilityService';
 import ImportRestoreModal from './ImportRestoreModal';
-import type { RestoreResult } from '../types/portability';
 
 interface DataPortabilitySectionProps {
   taskCount: number;
@@ -35,7 +34,7 @@ export default function DataPortabilitySection({
     }
   };
 
-  const handleRestoreSuccess = (_result: RestoreResult) => {
+  const handleRestoreSuccess = () => {
     onDataRestored();
   };
 

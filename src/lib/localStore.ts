@@ -45,20 +45,49 @@ function now(): string {
   return new Date().toISOString();
 }
 
+// In-memory fallback for environments where localStorage is not available (e.g. SSR, restricted context, or headless tests)
+const memoryStorage = new Map<string, string>();
+
+function getLocalStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+    if (typeof localStorage !== 'undefined') {
+      return localStorage;
+    }
+  } catch (err: unknown) {
+    // Blocked by security policy or storage sandbox
+  }
+  return null;
+}
+
 function load<T>(key: string): T[] {
   try {
-    const raw = localStorage.getItem(key);
+    const storage = getLocalStorage();
+    const raw = storage ? storage.getItem(key) : memoryStorage.get(key);
     return raw ? (JSON.parse(raw) as T[]) : [];
-  } catch {
+  } catch (err: unknown) {
     return [];
   }
 }
 
 function save<T>(key: string, items: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(items));
-  } catch {
-    // localStorage quota exceeded or unavailable — fail silently
+    const serialized = JSON.stringify(items);
+    const storage = getLocalStorage();
+    if (storage) {
+      storage.setItem(key, serialized);
+      return;
+    }
+    memoryStorage.set(key, serialized);
+  } catch (err: unknown) {
+    console.warn(`[localStore] Failed to persist "${key}" to localStorage:`, err);
+    memoryStorage.set(key, JSON.stringify(items));
+    if (err instanceof Error && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+      throw new Error(`Storage quota exceeded while saving ${key}.`);
+    }
+    throw err;
   }
 }
 
@@ -294,9 +323,21 @@ export const localSessions = {
 // ─── Utility: clear all local data (useful for "sign in to save" flow) ────────
 
 export function clearLocalStore(): void {
-  localStorage.removeItem(KEYS.tasks);
-  localStorage.removeItem(KEYS.missions);
-  localStorage.removeItem(KEYS.sessions);
+  try {
+    const storage = getLocalStorage();
+    if (storage) {
+      storage.removeItem(KEYS.tasks);
+      storage.removeItem(KEYS.missions);
+      storage.removeItem(KEYS.sessions);
+    }
+  } catch (err: unknown) {
+    console.warn('[localStore] Failed to clear localStorage:', err);
+  }
+  memoryStorage.delete(KEYS.tasks);
+  memoryStorage.delete(KEYS.missions);
+  memoryStorage.delete(KEYS.sessions);
+
+
 }
 
 /**

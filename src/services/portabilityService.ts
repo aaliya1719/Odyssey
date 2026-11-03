@@ -186,20 +186,40 @@ export const portabilityService = {
     if (!user) {
       // Unauthenticated / Anonymous mode using localStore
       const prepared = prepareDataForImport(data, 'local-anon');
+      const snapshot = localStore.exportAll();
 
-      if (strategy === 'replace') {
-        localStore.replaceAll(prepared);
-      } else {
-        localStore.mergeAll(prepared);
+      try {
+        if (strategy === 'replace') {
+          localStore.replaceAll(prepared);
+        } else {
+          localStore.mergeAll(prepared);
+        }
+
+        return {
+          success: true,
+          strategy,
+          tasksImported: prepared.tasks.length,
+          missionsImported: prepared.missions.length,
+          sessionsImported: prepared.sessions.length,
+        };
+      } catch (err: unknown) {
+        if (strategy === 'replace') {
+          try {
+            localStore.replaceAll(snapshot);
+          } catch {
+            // Ignore rollback failure
+          }
+        }
+        const message = err instanceof Error ? err.message : 'Local storage restoration failed.';
+        return {
+          success: false,
+          strategy,
+          tasksImported: 0,
+          missionsImported: 0,
+          sessionsImported: 0,
+          error: message,
+        };
       }
-
-      return {
-        success: true,
-        strategy,
-        tasksImported: prepared.tasks.length,
-        missionsImported: prepared.missions.length,
-        sessionsImported: prepared.sessions.length,
-      };
     }
 
     // Authenticated mode using Supabase
@@ -207,30 +227,102 @@ export const portabilityService = {
 
     try {
       if (strategy === 'replace') {
-        // Safe delete order to prevent constraint violations
-        const { error: sessionDelErr } = await supabase.from('focus_sessions').delete().eq('user_id', user.id);
-        if (sessionDelErr) throw sessionDelErr;
+        // 1. Snapshot existing user data before destructive deletion to safeguard against midway failure
+        const [tasksSnapRes, missionsSnapRes, sessionsSnapRes] = await Promise.all([
+          supabase.from('tasks').select('*').eq('user_id', user.id),
+          supabase.from('missions').select('*').eq('user_id', user.id),
+          supabase.from('focus_sessions').select('*').eq('user_id', user.id),
+        ]);
 
-        const { error: missionDelErr } = await supabase.from('missions').delete().eq('user_id', user.id);
-        if (missionDelErr) throw missionDelErr;
+        if (tasksSnapRes.error) throw tasksSnapRes.error;
+        if (missionsSnapRes.error) throw missionsSnapRes.error;
+        if (sessionsSnapRes.error) throw sessionsSnapRes.error;
 
-        const { error: taskDelErr } = await supabase.from('tasks').delete().eq('user_id', user.id);
-        if (taskDelErr) throw taskDelErr;
+        const snapshot = {
+          tasks: (tasksSnapRes.data as Task[]) ?? [],
+          missions: (missionsSnapRes.data as Mission[]) ?? [],
+          sessions: (sessionsSnapRes.data as FocusSession[]) ?? [],
+        };
 
-        // Insert in order of dependencies (tasks -> missions -> sessions)
-        if (prepared.tasks.length > 0) {
-          const { error } = await supabase.from('tasks').insert(prepared.tasks);
-          if (error) throw error;
+        // Cache snapshot in sessionStorage if available for disaster recovery
+        const snapshotKey = `ody_backup_replace_${user.id}`;
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(snapshotKey, JSON.stringify(snapshot));
+          }
+        } catch {
+          // Ignore storage quota or access issues
         }
 
-        if (prepared.missions.length > 0) {
-          const { error } = await supabase.from('missions').insert(prepared.missions);
-          if (error) throw error;
-        }
+        try {
+          // Safe delete order to prevent constraint violations
+          const { error: sessionDelErr } = await supabase.from('focus_sessions').delete().eq('user_id', user.id);
+          if (sessionDelErr) throw sessionDelErr;
 
-        if (prepared.sessions.length > 0) {
-          const { error } = await supabase.from('focus_sessions').insert(prepared.sessions);
-          if (error) throw error;
+          const { error: missionDelErr } = await supabase.from('missions').delete().eq('user_id', user.id);
+          if (missionDelErr) throw missionDelErr;
+
+          const { error: taskDelErr } = await supabase.from('tasks').delete().eq('user_id', user.id);
+          if (taskDelErr) throw taskDelErr;
+
+          // Insert in order of dependencies (tasks -> missions -> sessions)
+          if (prepared.tasks.length > 0) {
+            const { error } = await supabase.from('tasks').insert(prepared.tasks);
+            if (error) throw error;
+          }
+
+          if (prepared.missions.length > 0) {
+            const { error } = await supabase.from('missions').insert(prepared.missions);
+            if (error) throw error;
+          }
+
+          if (prepared.sessions.length > 0) {
+            const { error } = await supabase.from('focus_sessions').insert(prepared.sessions);
+            if (error) throw error;
+          }
+
+          // Clean up emergency snapshot after successful replace
+          try {
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.removeItem(snapshotKey);
+            }
+          } catch {
+            // Ignore
+          }
+        } catch (replaceErr: unknown) {
+          // Insertion or deletion failed midway: attempt rollback from snapshot
+          console.error('[portabilityService] Replace failed, attempting snapshot rollback:', replaceErr);
+          let rollbackFailed = false;
+
+          try {
+            // Clean up any partially inserted records
+            await supabase.from('focus_sessions').delete().eq('user_id', user.id);
+            await supabase.from('missions').delete().eq('user_id', user.id);
+            await supabase.from('tasks').delete().eq('user_id', user.id);
+
+            // Re-insert snapshotted records
+            if (snapshot.tasks.length > 0) {
+              const { error } = await supabase.from('tasks').insert(snapshot.tasks);
+              if (error) throw error;
+            }
+            if (snapshot.missions.length > 0) {
+              const { error } = await supabase.from('missions').insert(snapshot.missions);
+              if (error) throw error;
+            }
+            if (snapshot.sessions.length > 0) {
+              const { error } = await supabase.from('focus_sessions').insert(snapshot.sessions);
+              if (error) throw error;
+            }
+          } catch (rollbackErr) {
+            rollbackFailed = true;
+            console.error('[portabilityService] Failed to complete snapshot rollback:', rollbackErr);
+          }
+
+          const cause = replaceErr instanceof Error ? replaceErr.message : 'Database error during replace.';
+          if (rollbackFailed) {
+            throw new Error(`Replace failed: ${cause}. Rollback also encountered an error. A local snapshot may be preserved in session storage.`);
+          }
+          throw new Error(`Replace failed: ${cause}. Existing data was safely rolled back and preserved.`);
         }
       } else {
         // Merge strategy (upsert records)
