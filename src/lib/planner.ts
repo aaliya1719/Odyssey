@@ -11,6 +11,7 @@
 import type { InterpretedItem, ItemCategory } from './interpreter';
 import type { TaskPriority } from '../types/database';
 import type { CreateMissionInput } from '../services/missionService';
+import { contextNote, contextPenalty, type PlanningContext } from './planContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ export function scoreItem(
   item: InterpretedItem,
   approach: ApproachId,
   referenceDate: Date = new Date(),
+  context?: PlanningContext,
 ): number {
   const catWeight      = CATEGORY_WEIGHTS[approach][item.category];
   const priorityBonus  = PRIORITY_BONUS[item.priority];
@@ -101,7 +103,7 @@ export function scoreItem(
     // 0 days → +4, 7 days → +2, 14+ days → 0
     proximityBonus = Math.max(0, 4 - Math.floor(daysAway / 2));
   }
-  return catWeight + priorityBonus + proximityBonus;
+  return catWeight + priorityBonus + proximityBonus - contextPenalty(item, approach, proximityBonus, context);
 }
 
 // Normalise scores to 0-10 emphasis range within an approach
@@ -147,6 +149,7 @@ export function missionFromApproach(approach: PlanApproach): CreateMissionInput 
 export function buildApproaches(
   items: InterpretedItem[],
   referenceDate: Date = new Date(),
+  context?: PlanningContext,
 ): PlanApproach[] {
   if (items.length === 0) return [];
 
@@ -175,7 +178,7 @@ export function buildApproaches(
   ];
 
   return approaches.map(({ id, emoji, name, tagline, description }) => {
-    const rawScores = items.map(item => scoreItem(item, id, referenceDate));
+    const rawScores = items.map(item => scoreItem(item, id, referenceDate, context));
     const normScores = normalise(rawScores);
 
     // Pair items with their normalised scores, sort descending
@@ -190,7 +193,7 @@ export function buildApproaches(
     const approachItems: ApproachItem[] = scored.map(({ item, emphasis }) => ({
       item,
       emphasis,
-      framing: framingFor(item, id, emphasis),
+      framing: framingFor(item, id, emphasis) + contextNote(item, context),
     }));
 
     return { id, emoji, name, tagline, description, items: approachItems };
