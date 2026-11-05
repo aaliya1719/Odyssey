@@ -26,11 +26,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  planned:   { bg: 'rgba(122,143,166,0.1)',  color: '#7A8FA6', border: 'rgba(122,143,166,0.2)' },
-  active:    { bg: 'rgba(184,122,85,0.12)',  color: '#B87A55', border: 'rgba(184,122,85,0.3)'  },
-  paused:    { bg: 'rgba(200,136,58,0.1)',   color: '#D6A84F', border: 'rgba(200,136,58,0.25)' },
-  completed: { bg: 'rgba(74,140,106,0.1)',   color: '#4A8C6A', border: 'rgba(74,140,106,0.25)' },
-  abandoned: { bg: 'rgba(168,59,59,0.08)',   color: '#A83B3B', border: 'rgba(168,59,59,0.2)'   },
+  planned:   { bg: 'color-mix(in srgb, var(--color-status-low) 10%, transparent)',  color: 'var(--color-status-low)', border: 'color-mix(in srgb, var(--color-status-low) 20%, transparent)' },
+  active:    { bg: 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)',  color: 'var(--color-app-mission)', border: 'color-mix(in srgb, var(--color-app-mission) 30%, transparent)'  },
+  paused:    { bg: 'color-mix(in srgb, var(--color-app-warning) 10%, transparent)',   color: 'var(--color-app-gold)', border: 'color-mix(in srgb, var(--color-app-warning) 25%, transparent)' },
+  completed: { bg: 'color-mix(in srgb, var(--color-app-success) 10%, transparent)',   color: 'var(--color-app-success)', border: 'color-mix(in srgb, var(--color-app-success) 25%, transparent)' },
+  abandoned: { bg: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)',   color: 'var(--color-app-danger)', border: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)'   },
 };
 
 // ─── Plan Chooser ─────────────────────────────────────────────────────────────
@@ -53,9 +53,8 @@ function PlanChooser({
 
   return (
     <div
-      className="rounded-xl overflow-hidden mb-8"
+      className="rounded-xl overflow-hidden mb-8 app-panel-deep"
       style={{
-        background:  'rgba(5,8,23,0.85)',
         border:      '1px solid rgba(30,60,100,0.5)',
         boxShadow:   '0 4px 40px -8px rgba(3,6,13,0.7)',
       }}
@@ -65,7 +64,7 @@ function PlanChooser({
         style={{ borderBottom: '1px solid rgba(30,60,100,0.35)' }}>
         <div className="flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: 'var(--color-app-mission)', boxShadow: '0 0 6px rgba(184,122,85,0.5)' }} />
+            style={{ backgroundColor: 'var(--color-app-mission)', boxShadow: '0 0 6px color-mix(in srgb, var(--color-app-mission) 50%, transparent)' }} />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em]"
               style={{ color: 'var(--color-app-mission)' }}>
@@ -137,11 +136,10 @@ function PlanCard({
 
   return (
     <div
-      className="rounded-xl overflow-hidden cursor-pointer transition-all"
+      className="rounded-xl overflow-hidden cursor-pointer transition-all app-panel"
       style={{
-        background:  selected ? 'rgba(184,122,85,0.1)' : 'rgba(8,19,33,0.85)',
-        border:      `1px solid ${selected ? 'rgba(184,122,85,0.5)' : 'rgba(30,60,100,0.45)'}`,
-        boxShadow:   selected ? '0 0 0 1px rgba(184,122,85,0.12)' : 'none',
+        border:      `1px solid ${selected ? 'color-mix(in srgb, var(--color-app-mission) 50%, transparent)' : 'rgba(30,60,100,0.45)'}`,
+        boxShadow:   selected ? '0 0 0 1px color-mix(in srgb, var(--color-app-mission) 12%, transparent)' : 'none',
       }}
       onClick={onSelect}
       role="button"
@@ -389,7 +387,7 @@ function CreateMissionPanel({
             </h2>
             {currentAiMission?.aiGenerated && (
               <span className="text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
-                style={{ background: 'rgba(184,122,85,0.12)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.3)' }}>
+                style={{ background: 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 30%, transparent)' }}>
                 AI Suggested
               </span>
             )}
@@ -418,7 +416,7 @@ function CreateMissionPanel({
 
       {err && (
         <div className="rounded-lg p-3 text-sm mb-4"
-          style={{ backgroundColor: 'rgba(168,59,59,0.1)', border: '1px solid rgba(168,59,59,0.25)', color: '#E07070' }}>
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}>
           {err}
         </div>
       )}
@@ -441,7 +439,7 @@ function CreateMissionPanel({
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
             style={{ color: 'var(--color-app-text-muted)' }}>
-            Mission Title <span style={{ color: '#E07070' }}>*</span>
+            Mission Title <span style={{ color: 'var(--color-status-urgent)' }}>*</span>
           </label>
           <input type="text" required value={title} onChange={e => setTitle(e.target.value)}
             placeholder="Name this mission…" className="app-input w-full" />
@@ -508,8 +506,8 @@ function MissionCard({
     <div className="rounded-xl overflow-hidden"
       style={{
         backgroundColor: 'var(--color-app-surface)',
-        border:  `1px solid ${mission.status === 'active' ? 'rgba(184,122,85,0.4)' : 'var(--color-app-border)'}`,
-        boxShadow: mission.status === 'active' ? '0 0 0 1px rgba(184,122,85,0.08)' : 'none',
+        border:  `1px solid ${mission.status === 'active' ? 'color-mix(in srgb, var(--color-app-mission) 40%, transparent)' : 'var(--color-app-border)'}`,
+        boxShadow: mission.status === 'active' ? '0 0 0 1px color-mix(in srgb, var(--color-app-mission) 8%, transparent)' : 'none',
       }}>
       <div className="p-5">
         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -539,7 +537,7 @@ function MissionCard({
             className="p-1.5 rounded-lg cursor-pointer border-none flex-shrink-0"
             style={{ backgroundColor: 'transparent', color: 'var(--color-app-text-dim)' }}
             title="Delete"
-            onMouseEnter={e => (e.currentTarget.style.color = '#E07070')}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-status-urgent)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -571,7 +569,7 @@ function MissionCard({
             </span>
           )}
           {mission.completed_at && (
-            <span className="text-xs" style={{ color: '#4A8C6A' }}>
+            <span className="text-xs" style={{ color: 'var(--color-app-success)' }}>
               Completed {new Date(mission.completed_at).toLocaleDateString()}
             </span>
           )}
@@ -585,7 +583,7 @@ function MissionCard({
               style={{
                 backgroundColor: mission.status === 'active' ? 'var(--color-app-mission)' : 'var(--color-app-mission-light)',
                 color:           mission.status === 'active' ? '#fff' : 'var(--color-app-mission)',
-                border:          mission.status === 'active' ? 'none' : '1px solid rgba(184,122,85,0.25)',
+                border:          mission.status === 'active' ? 'none' : '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)',
               }}
               onMouseEnter={e => {
                 if (mission.status !== 'active') {
@@ -598,7 +596,7 @@ function MissionCard({
                 if (mission.status !== 'active') {
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--color-app-mission-light)';
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-app-mission)';
-                  (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(184,122,85,0.25)';
+                  (e.currentTarget as HTMLButtonElement).style.border = '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)';
                 }
               }}
             >
@@ -761,7 +759,7 @@ export default function Mission() {
       </div>
 
       {loadingMessage && (
-        <div className="rounded-xl px-5 py-6 mb-8 flex items-center gap-3" style={{ background: 'rgba(8,19,33,0.85)', border: '1px solid rgba(30,60,100,0.45)' }}>
+        <div className="rounded-xl px-5 py-6 mb-8 flex items-center gap-3 app-panel" style={{ border: '1px solid rgba(30,60,100,0.45)' }}>
           <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} />
           <div><p className="text-sm font-medium" style={{ color: 'var(--color-app-text)' }}>{loadingMessage.title}</p><p className="text-xs mt-0.5" style={{ color: 'var(--color-app-text-dim)' }}>{loadingMessage.sub}</p></div>
         </div>
@@ -777,10 +775,10 @@ export default function Mission() {
       {loading && planScreen === 'list' ? (
         <div className="flex flex-col items-center justify-center py-20"><div className="w-8 h-8 border-2 rounded-full animate-spin mb-3" style={{ borderColor: 'var(--color-app-mission)', borderTopColor: 'transparent' }} /><span className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>Loading missions…</span></div>
       ) : error ? (
-        <div className="rounded-xl p-5 text-center mb-6" style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
-          <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
+        <div className="rounded-xl p-5 text-center mb-6" style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)' }}>
+          <p className="text-sm mb-3" style={{ color: 'var(--color-status-urgent)' }}>{error}</p>
           <button onClick={load} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
-            style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)', color: 'var(--color-status-urgent)' }}>Retry</button>
         </div>
       ) : planScreen === 'list' && activeMissions.length === 0 && tasks.filter(t => t.status !== 'completed' && t.status !== 'archived').length === 0 ? (
         <div className="rounded-xl p-14 text-center"
@@ -815,10 +813,10 @@ export default function Mission() {
       ) : planScreen === 'list' ? (
         <>
           {currentMission ? (
-            <section className="mb-8 rounded-2xl p-6 sm:p-7" style={{ background: 'linear-gradient(135deg, rgba(18,32,58,0.96) 0%, rgba(8,19,33,0.98) 100%)', border: '1px solid rgba(184,122,85,0.48)', boxShadow: '0 12px 38px -8px rgba(184,122,85,0.18)' }}>
+            <section className="mb-8 rounded-2xl p-6 sm:p-7 app-spotlight-strong" style={{ border: '1px solid color-mix(in srgb, var(--color-app-mission) 48%, transparent)', boxShadow: '0 12px 38px -8px color-mix(in srgb, var(--color-app-mission) 18%, transparent)' }}>
               <div className="flex items-center justify-between gap-3 mb-5">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentTimer.running ? '#4A8C6A' : 'var(--color-app-mission)' }} />
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentTimer.running ? 'var(--color-app-success)' : 'var(--color-app-mission)' }} />
                   <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--color-app-mission)' }}>Current Mission</p>
                 </div>
                 <button onClick={() => handleDeleteMission(currentMission.id)} className="p-1.5 rounded-lg cursor-pointer border-none bg-transparent" style={{ color: 'var(--color-app-text-dim)' }} title="Delete mission" aria-label="Delete mission">
@@ -836,9 +834,9 @@ export default function Mission() {
                 <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-dim)' }}>{Math.round(currentProgress * 100)}% complete</span>
               </div>
               <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(30,60,100,0.45)' }}>
-                <div className="h-full rounded-full" style={{ width: `${Math.round(currentProgress * 100)}%`, background: 'linear-gradient(90deg, #B87A55, #E5B76A)', transition: 'width 0.8s ease' }} />
+                <div className="h-full rounded-full" style={{ width: `${Math.round(currentProgress * 100)}%`, background: 'linear-gradient(90deg, var(--color-app-mission), var(--color-ody-gold))', transition: 'width 0.8s ease' }} />
               </div>
-              <button onClick={() => handleExecute(currentMission, currentMissionTask)} className="mt-6 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none" style={{ background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)', color: '#050817', boxShadow: '0 4px 16px rgba(184,122,85,0.3)' }}>
+              <button onClick={() => handleExecute(currentMission, currentMissionTask)} className="mt-6 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none" style={{ background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)', color: '#050817', boxShadow: '0 4px 16px color-mix(in srgb, var(--color-app-mission) 30%, transparent)' }}>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" /></svg>
                 {currentMission.status === 'planned' ? 'Start Mission' : 'Continue Mission'}
               </button>
@@ -871,7 +869,7 @@ export default function Mission() {
         <>
           {/* Contextual guidance banner */}
           <div className="rounded-xl px-5 py-3.5 mb-6 flex items-start gap-3"
-            style={{ background: 'rgba(184,122,85,0.06)', border: '1px solid rgba(184,122,85,0.2)' }}>
+            style={{ background: 'color-mix(in srgb, var(--color-app-mission) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 20%, transparent)' }}>
             <span className="text-base mt-0.5" aria-hidden="true">💡</span>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-app-mission)' }}>
@@ -887,22 +885,21 @@ export default function Mission() {
           {activeMissions.length > 0 && (
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#B87A55] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[var(--color-app-mission)] animate-pulse" />
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-mission)' }}>
                   Recommended Next Move
                 </p>
               </div>
               <div
-                className="rounded-2xl p-6"
+                className="rounded-2xl p-6 app-spotlight"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
-                  border: '1px solid rgba(184,122,85,0.45)',
-                  boxShadow: '0 8px 32px -4px rgba(184,122,85,0.15)',
+                  border: '1px solid color-mix(in srgb, var(--color-app-mission) 45%, transparent)',
+                  boxShadow: '0 8px 32px -4px color-mix(in srgb, var(--color-app-mission) 15%, transparent)',
                 }}
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-[0.65rem] font-bold tracking-wider uppercase px-2 py-0.5 rounded"
-                    style={{ backgroundColor: 'rgba(184,122,85,0.18)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.35)' }}>
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 18%, transparent)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 35%, transparent)' }}>
                     {STATUS_LABELS[activeMissions[0].status]}
                   </span>
                   {activeMissions[0].task_id && (
@@ -923,8 +920,8 @@ export default function Mission() {
                 )}
 
                 {activeMissions[0].next_action && (
-                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5"
-                    style={{ backgroundColor: 'rgba(5,8,23,0.6)', border: '1px solid rgba(49,75,115,0.35)' }}>
+                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5 app-panel-inset"
+                    style={{ border: '1px solid rgba(49,75,115,0.35)' }}>
                     <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor" strokeWidth={2} style={{ color: 'var(--color-app-mission)' }}>
                       <path strokeLinecap="round" strokeLinejoin="round"
@@ -957,9 +954,9 @@ export default function Mission() {
                     onClick={() => handleExecute(activeMissions[0], tasks.find(t => t.id === activeMissions[0].task_id) ?? null)}
                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all"
                     style={{
-                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                       color: '#050817',
-                      boxShadow: '0 4px 16px rgba(184,122,85,0.35)',
+                      boxShadow: '0 4px 16px color-mix(in srgb, var(--color-app-mission) 35%, transparent)',
                     }}
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -991,22 +988,21 @@ export default function Mission() {
             return (
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="w-2 h-2 rounded-full bg-[#B87A55] animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-app-mission)] animate-pulse" />
                   <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-mission)' }}>
                     Recommended Next Move
                   </p>
                 </div>
                 <div
-                  className="rounded-2xl p-6"
+                  className="rounded-2xl p-6 app-spotlight"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
-                    border: '1px solid rgba(184,122,85,0.45)',
-                    boxShadow: '0 8px 32px -4px rgba(184,122,85,0.15)',
+                    border: '1px solid color-mix(in srgb, var(--color-app-mission) 45%, transparent)',
+                    boxShadow: '0 8px 32px -4px color-mix(in srgb, var(--color-app-mission) 15%, transparent)',
                   }}
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="text-[0.65rem] font-bold tracking-wider uppercase px-2 py-0.5 rounded"
-                      style={{ backgroundColor: 'rgba(184,122,85,0.18)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.35)' }}>
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 18%, transparent)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 35%, transparent)' }}>
                       {topTask.priority} priority
                     </span>
                     {topTask.deadline && (
@@ -1024,8 +1020,8 @@ export default function Mission() {
                     {derived.objective}
                   </p>
 
-                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5"
-                    style={{ backgroundColor: 'rgba(5,8,23,0.6)', border: '1px solid rgba(49,75,115,0.35)' }}>
+                  <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5 app-panel-inset"
+                    style={{ border: '1px solid rgba(49,75,115,0.35)' }}>
                     <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor" strokeWidth={2} style={{ color: 'var(--color-app-mission)' }}>
                       <path strokeLinecap="round" strokeLinejoin="round"
@@ -1055,9 +1051,9 @@ export default function Mission() {
                       }}
                       className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all"
                       style={{
-                        background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                        background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                         color: '#050817',
-                        boxShadow: '0 4px 16px rgba(184,122,85,0.35)',
+                        boxShadow: '0 4px 16px color-mix(in srgb, var(--color-app-mission) 35%, transparent)',
                       }}
                     >
                       <span>Launch This Mission</span>
@@ -1134,7 +1130,7 @@ export default function Mission() {
                           setPlanScreen('create_mission');
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-all flex-shrink-0"
-                        style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.25)' }}
+                        style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)' }}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />

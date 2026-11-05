@@ -67,17 +67,16 @@ function buildAchievements(
 function AchievementBadge({ achievement }: { achievement: Achievement }) {
   return (
     <div
-      className="rounded-xl p-4 flex flex-col items-center text-center gap-2 transition-all"
+      className={`rounded-xl p-4 flex flex-col items-center text-center gap-2 transition-all${achievement.unlocked ? '' : ' app-dimmed'}`}
       style={{
         backgroundColor: achievement.unlocked ? 'var(--color-app-surface)' : 'var(--color-app-bg)',
-        border: `1px solid ${achievement.unlocked ? 'rgba(214,168,79,0.35)' : 'var(--color-app-border-subtle)'}`,
-        opacity: achievement.unlocked ? 1 : 0.55,
+        border: `1px solid ${achievement.unlocked ? 'color-mix(in srgb, var(--color-app-gold) 35%, transparent)' : 'var(--color-app-border-subtle)'}`,
       }}
     >
       <span
         className="text-2xl w-12 h-12 flex items-center justify-center rounded-full"
         style={{
-          backgroundColor: achievement.unlocked ? 'rgba(214,168,79,0.12)' : 'var(--color-app-surface-raised)',
+          backgroundColor: achievement.unlocked ? 'color-mix(in srgb, var(--color-app-gold) 12%, transparent)' : 'var(--color-app-surface-raised)',
           filter: achievement.unlocked ? 'none' : 'grayscale(1)',
         }}
       >
@@ -110,7 +109,7 @@ function AchievementBadge({ achievement }: { achievement: Achievement }) {
       {achievement.unlocked && (
         <span
           className="text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
-          style={{ backgroundColor: 'rgba(214,168,79,0.12)', color: 'var(--color-app-gold)', border: '1px solid rgba(214,168,79,0.25)' }}
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-gold) 12%, transparent)', color: 'var(--color-app-gold)', border: '1px solid color-mix(in srgb, var(--color-app-gold) 25%, transparent)' }}
         >
           Unlocked
         </span>
@@ -163,10 +162,10 @@ export default function Odyssey() {
   if (error) {
     return (
       <div className="max-w-xl mx-auto mt-16 rounded-xl p-6 text-center"
-        style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
-        <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)' }}>
+        <p className="text-sm mb-3" style={{ color: 'var(--color-status-urgent)' }}>{error}</p>
         <button onClick={load} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
-          style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)', color: 'var(--color-status-urgent)' }}>Retry</button>
       </div>
     );
   }
@@ -186,16 +185,16 @@ export default function Odyssey() {
       <div
         className="rounded-xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center gap-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(214,168,79,0.08) 0%, rgba(184,122,85,0.06) 100%)',
-          border: '1px solid rgba(214,168,79,0.2)',
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-app-gold) 8%, transparent) 0%, color-mix(in srgb, var(--color-app-mission) 6%, transparent) 100%)',
+          border: '1px solid color-mix(in srgb, var(--color-app-gold) 20%, transparent)',
         }}
       >
         {/* Avatar */}
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-display font-bold flex-shrink-0"
           style={{
-            backgroundColor: 'rgba(214,168,79,0.12)',
-            border: '2px solid rgba(214,168,79,0.3)',
+            backgroundColor: 'color-mix(in srgb, var(--color-app-gold) 12%, transparent)',
+            border: '2px solid color-mix(in srgb, var(--color-app-gold) 30%, transparent)',
             color: 'var(--color-app-gold)',
           }}
         >

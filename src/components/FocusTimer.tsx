@@ -32,13 +32,12 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
 
   return (
     <div
-      className="rounded-2xl flex flex-col items-center gap-6 relative overflow-hidden"
+      className="rounded-2xl flex flex-col items-center gap-6 relative overflow-hidden app-focus-surface"
       style={{
         padding: prominent ? '2.5rem 2rem' : '1.5rem',
-        background: 'radial-gradient(ellipse 90% 80% at 50% 20%, rgba(13,26,48,0.9) 0%, rgba(8,19,33,0.95) 100%)',
-        border: `1px solid ${running ? 'rgba(229,183,106,0.5)' : 'rgba(49,75,115,0.4)'}`,
+        border: `1px solid ${running ? 'color-mix(in srgb, var(--color-ody-gold) 50%, transparent)' : 'rgba(49,75,115,0.4)'}`,
         boxShadow: running
-          ? '0 12px 40px -8px rgba(229,183,106,0.25), inset 0 0 20px rgba(184,122,85,0.1)'
+          ? '0 12px 40px -8px color-mix(in srgb, var(--color-ody-gold) 25%, transparent), inset 0 0 20px color-mix(in srgb, var(--color-app-mission) 10%, transparent)'
           : '0 8px 32px -8px rgba(3,6,13,0.7)',
         transition: 'border-color 0.4s, box-shadow 0.4s',
       }}
@@ -49,8 +48,8 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
           <span
             className="w-2 h-2 rounded-full"
             style={{
-              backgroundColor: running ? '#4A8C6A' : isPaused ? '#D6A84F' : 'var(--color-app-mission)',
-              boxShadow: running ? '0 0 8px #4A8C6A' : 'none',
+              backgroundColor: running ? 'var(--color-app-success)' : isPaused ? 'var(--color-app-gold)' : 'var(--color-app-mission)',
+              boxShadow: running ? '0 0 8px var(--color-app-success)' : 'none',
             }}
           />
           <span className="text-[0.65rem] font-mono tracking-[0.18em] uppercase font-bold" style={{ color: 'var(--color-app-mission)' }}>
@@ -67,8 +66,8 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
         <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} className="-rotate-90">
           <defs>
             <linearGradient id="timerGlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#B87A55" />
-              <stop offset="100%" stopColor="#E5B76A" />
+              <stop offset="0%" style={{ stopColor: 'var(--color-app-mission)' }} />
+              <stop offset="100%" style={{ stopColor: 'var(--color-ody-gold)' }} />
             </linearGradient>
           </defs>
           <circle
@@ -86,7 +85,7 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
             strokeDashoffset={circumference * (1 - progress)}
             style={{
               transition: 'stroke-dashoffset 0.5s ease',
-              filter: running ? 'drop-shadow(0 0 6px rgba(229,183,106,0.6))' : 'none',
+              filter: running ? 'drop-shadow(0 0 6px color-mix(in srgb, var(--color-ody-gold) 60%, transparent))' : 'none',
             }}
           />
         </svg>
@@ -95,7 +94,7 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
             className="font-mono font-bold tabular-nums"
             style={{
               fontSize: prominent ? '2.5rem' : '1.6rem',
-              color: isCompleted ? '#4A8C6A' : running ? 'var(--color-app-gold)' : 'var(--color-app-text)',
+              color: isCompleted ? 'var(--color-app-success)' : running ? 'var(--color-app-gold)' : 'var(--color-app-text)',
               letterSpacing: '0.04em',
             }}
           >
@@ -118,7 +117,7 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
         {isCompleted ? (
           <span
             className="text-sm px-5 py-2.5 rounded-lg"
-            style={{ backgroundColor: 'rgba(74,140,106,0.1)', color: '#4A8C6A', border: '1px solid rgba(74,140,106,0.25)' }}
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-success) 10%, transparent)', color: 'var(--color-app-success)', border: '1px solid color-mix(in srgb, var(--color-app-success) 25%, transparent)' }}
           >
             Mission Complete ✓
           </span>
@@ -144,9 +143,9 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
               onClick={pause}
               className="flex items-center gap-2 rounded-lg font-medium cursor-pointer border-none"
               style={{
-                backgroundColor: 'rgba(214,168,79,0.1)',
-                color: '#D6A84F',
-                border: '1px solid rgba(214,168,79,0.25)',
+                backgroundColor: 'color-mix(in srgb, var(--color-app-gold) 10%, transparent)',
+                color: 'var(--color-app-gold)',
+                border: '1px solid color-mix(in srgb, var(--color-app-gold) 25%, transparent)',
                 padding: prominent ? '0.625rem 1.25rem' : '0.5rem 1rem',
                 fontSize: prominent ? '0.9375rem' : '0.875rem',
               }}
@@ -161,9 +160,9 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
               disabled={ending}
               className="flex items-center gap-2 rounded-lg font-medium cursor-pointer border-none disabled:opacity-50"
               style={{
-                backgroundColor: 'rgba(74,140,106,0.12)',
-                color: '#4A8C6A',
-                border: '1px solid rgba(74,140,106,0.25)',
+                backgroundColor: 'color-mix(in srgb, var(--color-app-success) 12%, transparent)',
+                color: 'var(--color-app-success)',
+                border: '1px solid color-mix(in srgb, var(--color-app-success) 25%, transparent)',
                 padding: prominent ? '0.625rem 1.25rem' : '0.5rem 1rem',
                 fontSize: prominent ? '0.9375rem' : '0.875rem',
               }}
@@ -193,9 +192,9 @@ export default function FocusTimer({ mission, onMissionUpdate, prominent = false
               disabled={ending}
               className="flex items-center gap-2 rounded-lg font-medium cursor-pointer border-none disabled:opacity-50"
               style={{
-                backgroundColor: 'rgba(74,140,106,0.12)',
-                color: '#4A8C6A',
-                border: '1px solid rgba(74,140,106,0.25)',
+                backgroundColor: 'color-mix(in srgb, var(--color-app-success) 12%, transparent)',
+                color: 'var(--color-app-success)',
+                border: '1px solid color-mix(in srgb, var(--color-app-success) 25%, transparent)',
                 padding: prominent ? '0.625rem 1.25rem' : '0.5rem 1rem',
                 fontSize: prominent ? '0.9375rem' : '0.875rem',
               }}

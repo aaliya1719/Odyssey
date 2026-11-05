@@ -112,10 +112,10 @@ export default function Journey() {
   if (error) {
     return (
       <div className="max-w-xl mx-auto mt-16 p-6 text-center rounded-xl"
-        style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
-        <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)' }}>
+        <p className="text-sm mb-3" style={{ color: 'var(--color-status-urgent)' }}>{error}</p>
         <button onClick={load} className="px-4 py-1.5 rounded text-xs cursor-pointer border-none"
-          style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)', color: 'var(--color-status-urgent)' }}>
           Retry
         </button>
       </div>
@@ -131,7 +131,7 @@ export default function Journey() {
           <div className="flex items-center gap-2 mb-1">
             <span
               className="text-[0.6rem] font-bold tracking-[0.18em] uppercase px-2 py-0.5 rounded"
-              style={{ backgroundColor: 'rgba(184,122,85,0.12)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.25)' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)' }}
             >
               {rank.code}
             </span>
@@ -170,7 +170,7 @@ export default function Journey() {
           { label: 'Missions Done', value: completedMissions.length, color: 'var(--color-app-mission)' },
           { label: 'Focus Time', value: formatMinutes(totalFocusMinutes), color: 'var(--color-app-gold)' },
           { label: 'Sessions', value: completedSessions.length, color: 'var(--color-app-text)' },
-          { label: 'Tasks Cleared', value: `${completedTasks.length}/${tasks.length}`, color: '#4A8C6A' },
+          { label: 'Tasks Cleared', value: `${completedTasks.length}/${tasks.length}`, color: 'var(--color-app-success)' },
         ].map(({ label, value, color }) => (
           <div
             key={label}
@@ -244,7 +244,7 @@ export default function Journey() {
                       { label: 'Completed Missions', value: completedMissions.length, color: 'var(--color-app-mission)' },
                       { label: 'Total XP', value: totalXp, color: 'var(--color-app-gold)' },
                       { label: 'Focus Time', value: formatMinutes(totalFocusMinutes), color: 'var(--color-app-text)' },
-                      { label: 'Tasks Cleared', value: completedTasks.length, color: '#4A8C6A' },
+                      { label: 'Tasks Cleared', value: completedTasks.length, color: 'var(--color-app-success)' },
                     ].map(({ label, value, color }) => (
                       <div key={label} className="p-3.5 rounded-xl"
                         style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
@@ -270,7 +270,7 @@ export default function Journey() {
                           </div>
                         </div>
                         <span className="text-[0.6rem] font-mono font-bold"
-                          style={{ color: cp.status === 'reached' ? '#4A8C6A' : 'var(--color-app-text-dim)' }}>
+                          style={{ color: cp.status === 'reached' ? 'var(--color-app-success)' : 'var(--color-app-text-dim)' }}>
                           {cp.requiredMissions > 0 ? `${cp.requiredMissions} missions` : 'Start'}
                         </span>
                       </div>
@@ -333,8 +333,8 @@ export default function Journey() {
                         <span
                           className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded uppercase"
                           style={s.completed
-                            ? { backgroundColor: 'rgba(74,140,106,0.1)', color: '#4A8C6A' }
-                            : { backgroundColor: 'rgba(122,143,166,0.1)', color: '#7A8FA6' }
+                            ? { backgroundColor: 'color-mix(in srgb, var(--color-app-success) 10%, transparent)', color: 'var(--color-app-success)' }
+                            : { backgroundColor: 'color-mix(in srgb, var(--color-status-low) 10%, transparent)', color: 'var(--color-status-low)' }
                           }
                         >
                           {s.completed ? 'done' : 'partial'}

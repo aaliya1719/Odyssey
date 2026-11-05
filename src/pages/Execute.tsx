@@ -135,15 +135,14 @@ export default function Execute() {
     return (
       <div className="max-w-md mx-auto mt-24 text-center px-4">
         <div
-          className="rounded-2xl p-10"
+          className="rounded-2xl p-10 app-focus-surface"
           style={{
-            background: 'radial-gradient(ellipse 90% 80% at 50% 20%, rgba(13,26,48,0.9) 0%, rgba(8,19,33,0.95) 100%)',
             border: '1px solid rgba(49,75,115,0.4)',
           }}
         >
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
-            style={{ background: 'rgba(184,122,85,0.1)', border: '1px solid rgba(184,122,85,0.2)' }}
+            style={{ background: 'color-mix(in srgb, var(--color-app-mission) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 20%, transparent)' }}
           >
             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
               style={{ color: 'var(--color-app-mission)' }}>
@@ -179,28 +178,27 @@ export default function Execute() {
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
         >Step 1 — Capture</Link>
-        <span style={{ opacity: 0.35 }}>›</span>
+        <span aria-hidden="true" style={{ opacity: 0.35 }}>›</span>
         <Link to="/mission" className="hover:underline"
           style={{ color: 'var(--color-app-text-dim)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
         >Step 2 — Plan</Link>
-        <span style={{ opacity: 0.35 }}>›</span>
+        <span aria-hidden="true" style={{ opacity: 0.35 }}>›</span>
         <span style={{ color: 'var(--color-app-mission)' }}>Step 3 — Execute</span>
       </nav>
 
       {/* ── Mission Control Console ── */}
       <div
-        className="rounded-2xl overflow-hidden"
+        className="rounded-2xl overflow-hidden app-console"
         style={{
-          background: 'radial-gradient(ellipse 120% 50% at 50% 0%, rgba(18,32,58,0.97) 0%, rgba(5,8,23,1) 65%)',
           border: running
-            ? '1px solid rgba(229,183,106,0.4)'
+            ? '1px solid color-mix(in srgb, var(--color-ody-gold) 40%, transparent)'
             : isCompleted
-            ? '1px solid rgba(74,140,106,0.4)'
+            ? '1px solid color-mix(in srgb, var(--color-app-success) 40%, transparent)'
             : '1px solid rgba(49,75,115,0.5)',
           boxShadow: running
-            ? '0 0 0 1px rgba(229,183,106,0.08), 0 16px 60px -12px rgba(229,183,106,0.2)'
+            ? '0 0 0 1px color-mix(in srgb, var(--color-ody-gold) 8%, transparent), 0 16px 60px -12px color-mix(in srgb, var(--color-ody-gold) 20%, transparent)'
             : '0 16px 60px -12px rgba(3,6,13,0.9)',
           transition: 'border-color 0.6s ease, box-shadow 0.6s ease',
         }}
@@ -216,14 +214,14 @@ export default function Execute() {
             <span
               className="w-2 h-2 rounded-full flex-shrink-0"
               style={{
-                backgroundColor: running ? '#4A8C6A' : isCompleted ? '#4A8C6A' : isPaused ? '#D6A84F' : '#B87A55',
-                boxShadow: running ? '0 0 8px rgba(74,140,106,0.8)' : isCompleted ? '0 0 8px rgba(74,140,106,0.6)' : 'none',
+                backgroundColor: running ? 'var(--color-app-success)' : isCompleted ? 'var(--color-app-success)' : isPaused ? 'var(--color-app-gold)' : 'var(--color-app-mission)',
+                boxShadow: running ? '0 0 8px color-mix(in srgb, var(--color-app-success) 80%, transparent)' : isCompleted ? '0 0 8px color-mix(in srgb, var(--color-app-success) 60%, transparent)' : 'none',
                 animation: running ? 'pulse 2s infinite' : 'none',
               }}
             />
             <span
               className="text-[0.6rem] font-mono font-bold tracking-[0.2em] uppercase"
-              style={{ color: running ? '#4A8C6A' : isCompleted ? '#4A8C6A' : isPaused ? '#D6A84F' : 'var(--color-app-mission)' }}
+              style={{ color: running ? 'var(--color-app-success)' : isCompleted ? 'var(--color-app-success)' : isPaused ? 'var(--color-app-gold)' : 'var(--color-app-mission)' }}
             >
               {running ? 'MISSION IN PROGRESS' : isCompleted ? 'MISSION COMPLETE' : isPaused ? 'SYSTEMS PAUSED' : isAbandoned ? 'MISSION ABORTED' : 'READY FOR LAUNCH'}
             </span>
@@ -258,8 +256,8 @@ export default function Execute() {
             <div
               className="flex items-start gap-2.5 rounded-lg px-3.5 py-3"
               style={{
-                background: 'rgba(184,122,85,0.07)',
-                border: '1px solid rgba(184,122,85,0.18)',
+                background: 'color-mix(in srgb, var(--color-app-mission) 7%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-app-mission) 18%, transparent)',
               }}
             >
               <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"
@@ -284,11 +282,11 @@ export default function Execute() {
           <div
             className="mx-5 mb-4 rounded-xl px-5 py-4 text-center"
             style={{
-              background: 'linear-gradient(135deg, rgba(74,140,106,0.12) 0%, rgba(74,140,106,0.06) 100%)',
-              border: '1px solid rgba(74,140,106,0.3)',
+              background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-app-success) 12%, transparent) 0%, color-mix(in srgb, var(--color-app-success) 6%, transparent) 100%)',
+              border: '1px solid color-mix(in srgb, var(--color-app-success) 30%, transparent)',
             }}
           >
-            <p className="text-base font-semibold mb-0.5" style={{ color: '#4A8C6A' }}>
+            <p className="text-base font-semibold mb-0.5" style={{ color: 'var(--color-app-success)' }}>
               ✓ Mission Accomplished
             </p>
             <p className="text-xs" style={{ color: 'var(--color-app-text-muted)' }}>
@@ -301,9 +299,8 @@ export default function Execute() {
         {!isFinished && (
           <div className="px-5 pb-5">
             <div
-              className="rounded-xl px-5 py-6 flex flex-col items-center gap-5"
+              className="rounded-xl px-5 py-6 flex flex-col items-center gap-5 app-panel-inset"
               style={{
-                background: 'rgba(5,8,23,0.6)',
                 border: '1px solid rgba(49,75,115,0.3)',
               }}
             >
@@ -313,8 +310,8 @@ export default function Execute() {
                 <svg width="200" height="200" viewBox="0 0 200 200" className="-rotate-90">
                   <defs>
                     <linearGradient id="mcTimerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor={isCompleted ? '#4A8C6A' : '#B87A55'} />
-                      <stop offset="100%" stopColor={isCompleted ? '#4A8C6A' : '#E5B76A'} />
+                      <stop offset="0%" style={{ stopColor: isCompleted ? 'var(--color-app-success)' : 'var(--color-app-mission)' }} />
+                      <stop offset="100%" style={{ stopColor: isCompleted ? 'var(--color-app-success)' : 'var(--color-ody-gold)' }} />
                     </linearGradient>
                   </defs>
 
@@ -335,7 +332,7 @@ export default function Execute() {
                     strokeDashoffset={CIRC * (1 - progress)}
                     style={{
                       transition: 'stroke-dashoffset 0.8s ease',
-                      filter: running ? 'drop-shadow(0 0 8px rgba(229,183,106,0.6))' : 'none',
+                      filter: running ? 'drop-shadow(0 0 8px color-mix(in srgb, var(--color-ody-gold) 60%, transparent))' : 'none',
                     }}
                   />
 
@@ -345,8 +342,7 @@ export default function Execute() {
                       cx={100 + RING_R * Math.cos(2 * Math.PI * progress - Math.PI / 2)}
                       cy={100 + RING_R * Math.sin(2 * Math.PI * progress - Math.PI / 2)}
                       r="5"
-                      fill={running ? '#E5B76A' : '#B87A55'}
-                      style={{ filter: running ? 'drop-shadow(0 0 6px rgba(229,183,106,0.9))' : 'none' }}
+                      style={{ fill: running ? 'var(--color-ody-gold)' : 'var(--color-app-mission)', filter: running ? 'drop-shadow(0 0 6px color-mix(in srgb, var(--color-ody-gold) 90%, transparent))' : 'none' }}
                     />
                   )}
                 </svg>
@@ -393,8 +389,8 @@ export default function Execute() {
                     className="h-full rounded-full"
                     style={{
                       width: `${Math.round(progress * 100)}%`,
-                      background: 'linear-gradient(90deg, #B87A55 0%, #E5B76A 100%)',
-                      boxShadow: running ? '0 0 8px rgba(229,183,106,0.5)' : 'none',
+                      background: 'linear-gradient(90deg, var(--color-app-mission) 0%, var(--color-ody-gold) 100%)',
+                      boxShadow: running ? '0 0 8px color-mix(in srgb, var(--color-ody-gold) 50%, transparent)' : 'none',
                       transition: 'width 0.8s ease',
                     }}
                   />
@@ -404,9 +400,9 @@ export default function Execute() {
                       className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2"
                       style={{
                         left: `calc(${Math.round(progress * 100)}% - 6px)`,
-                        backgroundColor: '#E5B76A',
+                        backgroundColor: 'var(--color-ody-gold)',
                         borderColor: '#050817',
-                        boxShadow: running ? '0 0 6px rgba(229,183,106,0.8)' : 'none',
+                        boxShadow: running ? '0 0 6px color-mix(in srgb, var(--color-ody-gold) 80%, transparent)' : 'none',
                         transition: 'left 0.8s ease',
                       }}
                     />
@@ -454,9 +450,9 @@ export default function Execute() {
                     onClick={handleStart}
                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all active:scale-95"
                     style={{
-                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                       color: '#050817',
-                      boxShadow: '0 4px 16px rgba(184,122,85,0.35)',
+                      boxShadow: '0 4px 16px color-mix(in srgb, var(--color-app-mission) 35%, transparent)',
                     }}
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -470,7 +466,7 @@ export default function Execute() {
                       onClick={handleResume}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all active:scale-95"
                       style={{
-                        background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                        background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                         color: '#050817',
                       }}
                     >
@@ -484,9 +480,9 @@ export default function Execute() {
                       disabled={ending}
                       className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium cursor-pointer border-none transition-all disabled:opacity-50"
                       style={{
-                        backgroundColor: 'rgba(74,140,106,0.15)',
-                        color: '#4A8C6A',
-                        border: '1px solid rgba(74,140,106,0.3)',
+                        backgroundColor: 'color-mix(in srgb, var(--color-app-success) 15%, transparent)',
+                        color: 'var(--color-app-success)',
+                        border: '1px solid color-mix(in srgb, var(--color-app-success) 30%, transparent)',
                       }}
                     >
                       {ending ? 'Logging…' : 'Complete'}
@@ -498,9 +494,9 @@ export default function Execute() {
                       onClick={handlePause}
                       className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium cursor-pointer border-none transition-all"
                       style={{
-                        backgroundColor: 'rgba(214,168,79,0.1)',
-                        color: '#D6A84F',
-                        border: '1px solid rgba(214,168,79,0.25)',
+                        backgroundColor: 'color-mix(in srgb, var(--color-app-gold) 10%, transparent)',
+                        color: 'var(--color-app-gold)',
+                        border: '1px solid color-mix(in srgb, var(--color-app-gold) 25%, transparent)',
                       }}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -513,9 +509,9 @@ export default function Execute() {
                       disabled={ending}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all disabled:opacity-50 active:scale-95"
                       style={{
-                        backgroundColor: 'rgba(74,140,106,0.15)',
-                        color: '#4A8C6A',
-                        border: '1px solid rgba(74,140,106,0.3)',
+                        backgroundColor: 'color-mix(in srgb, var(--color-app-success) 15%, transparent)',
+                        color: 'var(--color-app-success)',
+                        border: '1px solid color-mix(in srgb, var(--color-app-success) 30%, transparent)',
                       }}
                     >
                       {ending ? 'Logging…' : '✓ Complete Mission'}
@@ -530,10 +526,9 @@ export default function Execute() {
         {/* ── Post-completion Next Move Recommendation ── */}
         {isCompleted && (
           <div
-            className="mx-5 mb-5 rounded-xl p-5"
+            className="mx-5 mb-5 rounded-xl p-5 app-spotlight"
             style={{
-              background: 'linear-gradient(135deg, rgba(18,32,58,0.95) 0%, rgba(8,19,33,0.98) 100%)',
-              border: '1px solid rgba(184,122,85,0.4)',
+              border: '1px solid color-mix(in srgb, var(--color-app-mission) 40%, transparent)',
               boxShadow: '0 8px 32px -4px rgba(3,6,13,0.6)',
             }}
           >
@@ -543,9 +538,9 @@ export default function Execute() {
                   <span
                     className="text-[0.6rem] font-bold tracking-[0.16em] uppercase px-2 py-0.5 rounded"
                     style={{
-                      backgroundColor: 'rgba(184,122,85,0.15)',
+                      backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 15%, transparent)',
                       color: 'var(--color-app-mission)',
-                      border: '1px solid rgba(184,122,85,0.3)',
+                      border: '1px solid color-mix(in srgb, var(--color-app-mission) 30%, transparent)',
                     }}
                   >
                     YOUR NEXT MOVE
@@ -604,9 +599,9 @@ export default function Execute() {
                     }}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold cursor-pointer border-none transition-all"
                     style={{
-                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                       color: '#050817',
-                      boxShadow: '0 4px 14px rgba(184,122,85,0.3)',
+                      boxShadow: '0 4px 14px color-mix(in srgb, var(--color-app-mission) 30%, transparent)',
                     }}
                   >
                     <span>Start Next Mission</span>
@@ -636,7 +631,7 @@ export default function Execute() {
                     onClick={() => navigate('/journey')}
                     className="px-5 py-2 rounded-lg text-xs font-semibold cursor-pointer border-none transition-all"
                     style={{
-                      background: 'linear-gradient(135deg, #B87A55 0%, #D6A84F 100%)',
+                      background: 'linear-gradient(135deg, var(--color-app-mission) 0%, var(--color-app-gold) 100%)',
                       color: '#050817',
                     }}
                   >
@@ -657,8 +652,8 @@ export default function Execute() {
           <div
             className="mx-5 mb-5 rounded-xl px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4"
             style={{
-              background: 'rgba(168,59,59,0.06)',
-              border: '1px solid rgba(168,59,59,0.2)',
+              background: 'color-mix(in srgb, var(--color-app-danger) 6%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)',
             }}
           >
             <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
