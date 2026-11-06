@@ -84,9 +84,10 @@ function framingFor(
 
 // ─── Score function ───────────────────────────────────────────────────────────
 
-function scoreItem(
+export function scoreItem(
   item: InterpretedItem,
   approach: ApproachId,
+  referenceDate: Date = new Date(),
 ): number {
   const catWeight      = CATEGORY_WEIGHTS[approach][item.category];
   const priorityBonus  = PRIORITY_BONUS[item.priority];
@@ -95,7 +96,7 @@ function scoreItem(
   if (item.deadlineDate) {
     const daysAway = Math.max(
       0,
-      Math.ceil((item.deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      Math.ceil((item.deadlineDate.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24))
     );
     // 0 days → +4, 7 days → +2, 14+ days → 0
     proximityBonus = Math.max(0, 4 - Math.floor(daysAway / 2));
@@ -143,7 +144,10 @@ export function missionFromApproach(approach: PlanApproach): CreateMissionInput 
   };
 }
 
-export function buildApproaches(items: InterpretedItem[]): PlanApproach[] {
+export function buildApproaches(
+  items: InterpretedItem[],
+  referenceDate: Date = new Date(),
+): PlanApproach[] {
   if (items.length === 0) return [];
 
   const approaches: Array<{ id: ApproachId; emoji: string; name: string; tagline: string; description: string }> = [
@@ -171,7 +175,7 @@ export function buildApproaches(items: InterpretedItem[]): PlanApproach[] {
   ];
 
   return approaches.map(({ id, emoji, name, tagline, description }) => {
-    const rawScores = items.map(item => scoreItem(item, id));
+    const rawScores = items.map(item => scoreItem(item, id, referenceDate));
     const normScores = normalise(rawScores);
 
     // Pair items with their normalised scores, sort descending
