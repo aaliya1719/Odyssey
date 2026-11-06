@@ -45,20 +45,49 @@ function now(): string {
   return new Date().toISOString();
 }
 
+// In-memory fallback for environments where localStorage is not available (e.g. SSR, restricted context, or headless tests)
+const memoryStorage = new Map<string, string>();
+
+function getLocalStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+    if (typeof localStorage !== 'undefined') {
+      return localStorage;
+    }
+  } catch (err: unknown) {
+    // Blocked by security policy or storage sandbox
+  }
+  return null;
+}
+
 function load<T>(key: string): T[] {
   try {
-    const raw = localStorage.getItem(key);
+    const storage = getLocalStorage();
+    const raw = storage ? storage.getItem(key) : memoryStorage.get(key);
     return raw ? (JSON.parse(raw) as T[]) : [];
-  } catch {
+  } catch (err: unknown) {
     return [];
   }
 }
 
 function save<T>(key: string, items: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(items));
-  } catch {
-    // localStorage quota exceeded or unavailable — fail silently
+    const serialized = JSON.stringify(items);
+    const storage = getLocalStorage();
+    if (storage) {
+      storage.setItem(key, serialized);
+      return;
+    }
+    memoryStorage.set(key, serialized);
+  } catch (err: unknown) {
+    console.warn(`[localStore] Failed to persist "${key}" to localStorage:`, err);
+    memoryStorage.set(key, JSON.stringify(items));
+    if (err instanceof Error && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+      throw new Error(`Storage quota exceeded while saving ${key}.`);
+    }
+    throw err;
   }
 }
 
@@ -121,6 +150,20 @@ export const localTasks = {
     const tasks = load<Task>(KEYS.tasks).filter(t => t.id !== id);
     save(KEYS.tasks, tasks);
   },
+
+  replaceAll(tasks: Task[]): void {
+    save(KEYS.tasks, tasks);
+  },
+
+  merge(tasks: Task[]): void {
+    const existing = load<Task>(KEYS.tasks);
+    const map = new Map(existing.map(t => [t.id, t]));
+    for (const t of tasks) {
+      map.set(t.id, t);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    save(KEYS.tasks, merged);
+  },
 };
 
 // ─── Mission operations ───────────────────────────────────────────────────────
@@ -178,6 +221,20 @@ export const localMissions = {
   delete(id: string): void {
     const missions = load<Mission>(KEYS.missions).filter(m => m.id !== id);
     save(KEYS.missions, missions);
+  },
+
+  replaceAll(missions: Mission[]): void {
+    save(KEYS.missions, missions);
+  },
+
+  merge(missions: Mission[]): void {
+    const existing = load<Mission>(KEYS.missions);
+    const map = new Map(existing.map(m => [m.id, m]));
+    for (const m of missions) {
+      map.set(m.id, m);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    save(KEYS.missions, merged);
   },
 };
 
@@ -247,14 +304,40 @@ export const localSessions = {
     save(KEYS.sessions, sessions);
     return updated;
   },
+
+  replaceAll(sessions: FocusSession[]): void {
+    save(KEYS.sessions, sessions);
+  },
+
+  merge(sessions: FocusSession[]): void {
+    const existing = load<FocusSession>(KEYS.sessions);
+    const map = new Map(existing.map(s => [s.id, s]));
+    for (const s of sessions) {
+      map.set(s.id, s);
+    }
+    const merged = Array.from(map.values()).sort((a, b) => b.started_at.localeCompare(a.started_at));
+    save(KEYS.sessions, merged);
+  },
 };
 
 // ─── Utility: clear all local data (useful for "sign in to save" flow) ────────
 
 export function clearLocalStore(): void {
-  localStorage.removeItem(KEYS.tasks);
-  localStorage.removeItem(KEYS.missions);
-  localStorage.removeItem(KEYS.sessions);
+  try {
+    const storage = getLocalStorage();
+    if (storage) {
+      storage.removeItem(KEYS.tasks);
+      storage.removeItem(KEYS.missions);
+      storage.removeItem(KEYS.sessions);
+    }
+  } catch (err: unknown) {
+    console.warn('[localStore] Failed to clear localStorage:', err);
+  }
+  memoryStorage.delete(KEYS.tasks);
+  memoryStorage.delete(KEYS.missions);
+  memoryStorage.delete(KEYS.sessions);
+
+
 }
 
 /**
@@ -268,3 +351,23 @@ export function exportLocalStore() {
     sessions: localSessions.getAll(),
   };
 }
+
+export const localStore = {
+  replaceAll(data: { tasks: Task[]; missions: Mission[]; sessions: FocusSession[] }): void {
+    localTasks.replaceAll(data.tasks);
+    localMissions.replaceAll(data.missions);
+    localSessions.replaceAll(data.sessions);
+  },
+  mergeAll(data: { tasks: Task[]; missions: Mission[]; sessions: FocusSession[] }): void {
+    localTasks.merge(data.tasks);
+    localMissions.merge(data.missions);
+    localSessions.merge(data.sessions);
+  },
+  exportAll() {
+    return exportLocalStore();
+  },
+  clearAll() {
+    clearLocalStore();
+  },
+};
+

@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
+import DataPortabilitySection from '../components/DataPortabilitySection';
 import type { Task, Mission, FocusSession } from '../types/database';
 
 // ─── Achievement definitions ─────────────────────────────────────────────────
@@ -130,8 +131,10 @@ export default function Odyssey() {
 
   useEffect(() => { load(); }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (showLoadingSpinner = true) => {
+    if (showLoadingSpinner) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [t, m, s] = await Promise.all([
@@ -145,7 +148,9 @@ export default function Odyssey() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
-      setLoading(false);
+      if (showLoadingSpinner) {
+        setLoading(false);
+      }
     }
   };
 
@@ -240,6 +245,14 @@ export default function Odyssey() {
           </div>
         ))}
       </div>
+
+      {/* Account Data & Portability */}
+      <DataPortabilitySection
+        taskCount={tasks.length}
+        missionCount={missions.length}
+        sessionCount={sessions.length}
+        onDataRestored={() => load(false)}
+      />
 
       {/* Section label */}
       <div className="flex items-center justify-between mb-4">
