@@ -54,6 +54,7 @@ function TrailNode({ kind, label, selected }: { kind: NodeKind; label?: number; 
   return (
     <span
       className="relative flex items-center justify-center rounded-full flex-shrink-0 font-mono text-xs font-bold"
+      data-node={kind}
       style={{
         width: NODE_SIZE,
         height: NODE_SIZE,

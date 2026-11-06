@@ -19,17 +19,17 @@ import type { Mission, Task, TaskPriority } from '../types/database';
 // ─── Colour maps ──────────────────────────────────────────────────────────────
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  urgent: { bg: 'rgba(168,59,59,0.12)',  text: '#E07070', border: 'rgba(168,59,59,0.35)'  },
-  high:   { bg: 'rgba(200,136,58,0.1)',  text: '#D6A84F', border: 'rgba(200,136,58,0.3)'  },
-  medium: { bg: 'rgba(184,122,85,0.1)',  text: '#B87A55', border: 'rgba(184,122,85,0.25)' },
-  low:    { bg: 'rgba(122,143,166,0.1)', text: '#7A8FA6', border: 'rgba(122,143,166,0.2)' },
+  urgent: { bg: 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)',  text: 'var(--color-status-urgent)', border: 'color-mix(in srgb, var(--color-app-danger) 35%, transparent)'  },
+  high:   { bg: 'color-mix(in srgb, var(--color-app-warning) 10%, transparent)',  text: 'var(--color-app-gold)', border: 'color-mix(in srgb, var(--color-app-warning) 30%, transparent)'  },
+  medium: { bg: 'color-mix(in srgb, var(--color-app-mission) 10%, transparent)',  text: 'var(--color-app-mission)', border: 'color-mix(in srgb, var(--color-app-mission) 25%, transparent)' },
+  low:    { bg: 'color-mix(in srgb, var(--color-status-low) 10%, transparent)', text: 'var(--color-status-low)', border: 'color-mix(in srgb, var(--color-status-low) 20%, transparent)' },
 };
 
 const CATEGORY_META: Record<AIItemCategory, { label: string; color: string; bg: string; border: string }> = {
-  deadline: { label: 'Deadline',      color: '#E07070', bg: 'rgba(168,59,59,0.08)',    border: 'rgba(168,59,59,0.22)'   },
-  upcoming: { label: 'Upcoming',      color: '#D6A84F', bg: 'rgba(200,136,58,0.07)',   border: 'rgba(200,136,58,0.2)'   },
-  task:     { label: 'Task',          color: '#B87A55', bg: 'rgba(184,122,85,0.07)',   border: 'rgba(184,122,85,0.2)'   },
-  goal:     { label: 'Ongoing goal',  color: '#7A8FA6', bg: 'rgba(122,143,166,0.07)', border: 'rgba(122,143,166,0.18)' },
+  deadline: { label: 'Deadline',      color: 'var(--color-status-urgent)', bg: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)',    border: 'color-mix(in srgb, var(--color-app-danger) 22%, transparent)'   },
+  upcoming: { label: 'Upcoming',      color: 'var(--color-app-gold)', bg: 'color-mix(in srgb, var(--color-app-warning) 7%, transparent)',   border: 'color-mix(in srgb, var(--color-app-warning) 20%, transparent)'   },
+  task:     { label: 'Task',          color: 'var(--color-app-mission)', bg: 'color-mix(in srgb, var(--color-app-mission) 7%, transparent)',   border: 'color-mix(in srgb, var(--color-app-mission) 20%, transparent)'   },
+  goal:     { label: 'Ongoing goal',  color: 'var(--color-status-low)', bg: 'color-mix(in srgb, var(--color-status-low) 7%, transparent)', border: 'color-mix(in srgb, var(--color-status-low) 18%, transparent)' },
 };
 
 // ─── Capture form ─────────────────────────────────────────────────────────────
@@ -185,9 +185,9 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   };
 
   const ENERGY_OPTIONS: { value: EnergyLevel; label: string; color: string }[] = [
-    { value: 'low',    label: 'Low',    color: '#7A8FA6' },
-    { value: 'medium', label: 'Medium', color: '#B87A55' },
-    { value: 'high',   label: 'High',   color: '#4A8C6A' },
+    { value: 'low',    label: 'Low',    color: 'var(--color-status-low)' },
+    { value: 'medium', label: 'Medium', color: 'var(--color-app-mission)' },
+    { value: 'high',   label: 'High',   color: 'var(--color-app-success)' },
   ];
 
   const HORIZON_OPTIONS: { value: PlanHorizon; label: string }[] = [
@@ -200,8 +200,8 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
       className="rounded-xl overflow-hidden"
       style={{
         background:  'rgba(8, 19, 33, 0.85)',
-        border:      isListening ? '1px solid rgba(184, 122, 85, 0.7)' : '1px solid rgba(30, 60, 100, 0.45)',
-        boxShadow:   isListening ? '0 0 16px -2px rgba(184, 122, 85, 0.3)' : '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
+        border:      isListening ? '1px solid color-mix(in srgb, var(--color-app-mission) 70%, transparent)' : '1px solid rgba(30, 60, 100, 0.45)',
+        boxShadow:   isListening ? '0 0 16px -2px color-mix(in srgb, var(--color-app-mission) 30%, transparent)' : '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
         transition:  'border-color 0.3s ease, box-shadow 0.3s ease',
       }}
     >
@@ -231,12 +231,12 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
             {isListening && (
               <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
                 style={{
-                  backgroundColor: 'rgba(184, 122, 85, 0.15)',
+                  backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 15%, transparent)',
                   color: 'var(--color-app-mission)',
-                  border: '1px solid rgba(184, 122, 85, 0.3)',
+                  border: '1px solid color-mix(in srgb, var(--color-app-mission) 30%, transparent)',
                 }}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#B87A55] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-app-mission)] animate-pulse" />
                 Listening…
               </span>
             )}
@@ -251,7 +251,7 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
                 backgroundColor: isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.3)',
                 borderColor:     isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.5)',
                 color:           isListening ? '#fff' : 'var(--color-app-text-muted)',
-                boxShadow:       isListening ? '0 0 10px rgba(184, 122, 85, 0.5)' : 'none',
+                boxShadow:       isListening ? '0 0 10px color-mix(in srgb, var(--color-app-mission) 50%, transparent)' : 'none',
               }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -266,13 +266,13 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
       {/* Voice input error / notice */}
       {speechError && (
         <div className="mx-5 mb-2 px-3 py-1.5 rounded-lg text-xs flex items-center justify-between"
-          style={{ background: 'rgba(168,59,59,0.12)', border: '1px solid rgba(168,59,59,0.25)', color: '#E07070' }}>
+          style={{ background: 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}>
           <span>{speechError}</span>
           <button
             type="button"
             onClick={() => setSpeechError(null)}
             className="text-xs bg-transparent border-none cursor-pointer ml-2"
-            style={{ color: '#E07070' }}
+            style={{ color: 'var(--color-status-urgent)' }}
           >×</button>
         </div>
       )}
@@ -298,7 +298,7 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
                 value={availableHours}
                 onChange={e => setAvailableHours(parseFloat(e.target.value))}
                 disabled={interpreting}
-                className="flex-1 accent-[#B87A55] cursor-pointer"
+                className="flex-1 accent-(--color-app-mission) cursor-pointer"
                 style={{ height: '4px' }}
               />
               <span
@@ -351,9 +351,9 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
                   disabled={interpreting}
                   className="flex-1 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all"
                   style={{
-                    backgroundColor: horizon === opt.value ? 'rgba(184,122,85,0.12)' : 'transparent',
+                    backgroundColor: horizon === opt.value ? 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)' : 'transparent',
                     color:           horizon === opt.value ? 'var(--color-app-mission)' : 'var(--color-app-text-dim)',
-                    borderColor:     horizon === opt.value ? 'rgba(184,122,85,0.4)' : 'rgba(30,60,100,0.3)',
+                    borderColor:     horizon === opt.value ? 'color-mix(in srgb, var(--color-app-mission) 40%, transparent)' : 'rgba(30,60,100,0.3)',
                   }}
                 >
                   {opt.label}
@@ -385,7 +385,7 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
               onClick={addConsistencyGoal}
               disabled={interpreting || !consistencyInput.trim()}
               className="px-3 py-1.5 rounded-lg text-sm cursor-pointer border-none disabled:opacity-30"
-              style={{ backgroundColor: 'rgba(184,122,85,0.15)', color: 'var(--color-app-mission)' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 15%, transparent)', color: 'var(--color-app-mission)' }}
             >
               Add
             </button>
@@ -397,14 +397,14 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
                 <span
                   key={i}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
-                  style={{ background: 'rgba(122,143,166,0.12)', border: '1px solid rgba(122,143,166,0.25)', color: '#7A8FA6' }}
+                  style={{ background: 'color-mix(in srgb, var(--color-status-low) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-status-low) 25%, transparent)', color: 'var(--color-status-low)' }}
                 >
                   {g}
                   <button
                     type="button"
                     onClick={() => removeGoal(g)}
                     className="cursor-pointer bg-transparent border-none p-0 leading-none"
-                    style={{ color: '#7A8FA6' }}
+                    style={{ color: 'var(--color-status-low)' }}
                   >×</button>
                 </span>
               ))}
@@ -512,7 +512,7 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
         <div className="flex items-center gap-2.5">
           <div
             className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: 'var(--color-app-mission)', boxShadow: '0 0 6px rgba(184,122,85,0.6)' }}
+            style={{ backgroundColor: 'var(--color-app-mission)', boxShadow: '0 0 6px color-mix(in srgb, var(--color-app-mission) 60%, transparent)' }}
           />
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em]"
@@ -581,7 +581,7 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
       {/* Error */}
       {saveError && (
         <div className="mx-5 mb-3 px-3 py-2 rounded-lg text-xs"
-          style={{ background: 'rgba(168,59,59,0.12)', border: '1px solid rgba(168,59,59,0.25)', color: '#E07070' }}>
+          style={{ background: 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}>
           {saveError}
         </div>
       )}
@@ -682,7 +682,7 @@ function ReviewItemRow({
           </span>
           {item.isConsistency && (
             <span className="text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(122,143,166,0.1)', color: '#7A8FA6', border: '1px solid rgba(122,143,166,0.25)' }}>
+              style={{ background: 'color-mix(in srgb, var(--color-status-low) 10%, transparent)', color: 'var(--color-status-low)', border: '1px solid color-mix(in srgb, var(--color-status-low) 25%, transparent)' }}>
               daily
             </span>
           )}
@@ -698,7 +698,7 @@ function ReviewItemRow({
         onClick={onRemove}
         className="p-1 rounded opacity-0 group-hover/row:opacity-100 transition-opacity cursor-pointer border-none flex-shrink-0"
         style={{ backgroundColor: 'rgba(0,0,0,0.3)', color: 'var(--color-app-text-dim)' }}
-        onMouseEnter={e => (e.currentTarget.style.color = '#E07070')}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-status-urgent)')}
         onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -724,8 +724,8 @@ function TaskRow({
 
   return (
     <div
-      className="rounded-xl p-4 flex items-start justify-between gap-4 group transition-all"
-      style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)', opacity: isCompleted ? 0.55 : 1 }}
+      className={`rounded-xl p-4 flex items-start justify-between gap-4 group transition-all${isCompleted ? ' app-dimmed' : ''}`}
+      style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}
     >
       <div className="flex items-start gap-3 flex-1 min-w-0">
         <button
@@ -786,7 +786,7 @@ function TaskRow({
           <button
             onClick={() => onLaunchMission(task)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border-none"
-            style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.2)' }}
+            style={{ backgroundColor: 'var(--color-app-mission-light)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 20%, transparent)' }}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
@@ -798,7 +798,7 @@ function TaskRow({
           onClick={() => onDelete(task.id)}
           className="p-1.5 rounded-lg transition-all cursor-pointer border-none opacity-0 group-hover:opacity-100"
           style={{ color: 'var(--color-app-text-dim)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#E07070')}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-status-urgent)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-app-text-dim)')}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -994,12 +994,12 @@ export default function Home() {
           className="rounded-xl p-5 mb-8"
           style={{
             background: 'linear-gradient(135deg, rgba(18,32,58,0.92) 0%, rgba(8,19,33,0.96) 100%)',
-            border: '1px solid rgba(184,122,85,0.38)',
-            boxShadow: '0 8px 28px -8px rgba(184,122,85,0.16)',
+            border: '1px solid color-mix(in srgb, var(--color-app-mission) 38%, transparent)',
+            boxShadow: '0 8px 28px -8px color-mix(in srgb, var(--color-app-mission) 16%, transparent)',
           }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: missionTimer.running ? '#4A8C6A' : 'var(--color-app-mission)' }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: missionTimer.running ? 'var(--color-app-success)' : 'var(--color-app-mission)' }} />
             <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-app-mission)' }}>
               Pick up where you left off
             </p>
@@ -1012,7 +1012,7 @@ export default function Home() {
             <span className="text-xs font-mono" style={{ color: 'var(--color-app-text-dim)' }}>{Math.round(missionProgress * 100)}% complete</span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden mb-4" style={{ backgroundColor: 'rgba(30,60,100,0.42)' }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.round(missionProgress * 100)}%`, background: 'linear-gradient(90deg, #B87A55, #E5B76A)' }} />
+            <div className="h-full rounded-full" style={{ width: `${Math.round(missionProgress * 100)}%`, background: 'linear-gradient(90deg, var(--color-app-mission), var(--color-ody-gold))' }} />
           </div>
           <button
             onClick={() => navigate('/execute', { state: { mission: resumableMission } })}
@@ -1087,9 +1087,9 @@ export default function Home() {
             onClick={() => setIsFormOpen(!isFormOpen)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border-none"
             style={{
-              backgroundColor: isFormOpen ? 'rgba(184,122,85,0.12)' : 'transparent',
+              backgroundColor: isFormOpen ? 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)' : 'transparent',
               color:           isFormOpen ? 'var(--color-app-mission)' : 'var(--color-app-text-dim)',
-              border:          '1px solid ' + (isFormOpen ? 'rgba(184,122,85,0.3)' : 'rgba(30,60,100,0.35)'),
+              border:          '1px solid ' + (isFormOpen ? 'color-mix(in srgb, var(--color-app-mission) 30%, transparent)' : 'rgba(30,60,100,0.35)'),
             }}
           >
             {isFormOpen ? 'Cancel' : (
@@ -1111,7 +1111,7 @@ export default function Home() {
           <h2 className="font-display text-base mb-4" style={{ color: 'var(--color-app-text)' }}>New Task</h2>
           {formError && (
             <div className="rounded-lg p-3 text-xs mb-4"
-              style={{ backgroundColor: 'rgba(168,59,59,0.1)', border: '1px solid rgba(168,59,59,0.25)', color: '#E07070' }}>
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}>
               {formError}
             </div>
           )}
@@ -1119,7 +1119,7 @@ export default function Home() {
             <div>
               <label htmlFor="t-title" className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
                 style={{ color: 'var(--color-app-text-muted)' }}>
-                Title <span style={{ color: '#E07070' }}>*</span>
+                Title <span style={{ color: 'var(--color-status-urgent)' }}>*</span>
               </label>
               <input id="t-title" type="text" required value={title} onChange={e => setTitle(e.target.value)}
                 placeholder="What needs doing?" className="app-input w-full" />
@@ -1182,10 +1182,10 @@ export default function Home() {
         </div>
       ) : error ? (
         <div className="rounded-xl p-5 text-center"
-          style={{ backgroundColor: 'rgba(168,59,59,0.08)', border: '1px solid rgba(168,59,59,0.2)' }}>
-          <p className="text-sm mb-3" style={{ color: '#E07070' }}>{error}</p>
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)' }}>
+          <p className="text-sm mb-3" style={{ color: 'var(--color-status-urgent)' }}>{error}</p>
           <button onClick={loadTasks} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
-            style={{ backgroundColor: 'rgba(168,59,59,0.2)', color: '#E07070' }}>Retry</button>
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)', color: 'var(--color-status-urgent)' }}>Retry</button>
         </div>
       ) : tasks.length === 0 && screen === 'capture' ? (
         <div className="rounded-xl px-5 py-6 text-center"

@@ -92,7 +92,6 @@ export default function RootLayout() {
       <header
         className="app-navigation sticky top-0 z-50 backdrop-blur-md"
         style={{
-          backgroundColor: 'rgba(8,19,33,0.85)',
           borderBottom: '1px solid var(--color-app-border)',
         }}
       >
@@ -125,7 +124,7 @@ export default function RootLayout() {
                       backgroundColor: active
                         ? (isExecute ? 'var(--color-app-mission)' : 'var(--color-app-mission-glow)')
                         : (isExecute ? 'var(--color-app-mission-light)' : 'transparent'),
-                      border: isExecute && !active ? '1px solid rgba(184,122,85,0.25)' : 'none',
+                      border: isExecute && !active ? '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)' : 'none',
                     }}
                   >
                     {icon}
@@ -154,7 +153,7 @@ export default function RootLayout() {
                     style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent' }}
                     onMouseEnter={e => {
                       (e.currentTarget as HTMLButtonElement).style.color = '#E8E2D9';
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(168,59,59,0.12)';
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)';
                     }}
                     onMouseLeave={e => {
                       (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-app-text-muted)';
@@ -175,7 +174,7 @@ export default function RootLayout() {
                   }}
                   onMouseEnter={e => {
                     (e.currentTarget as HTMLAnchorElement).style.color = 'var(--color-app-text-muted)';
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(184,122,85,0.35)';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'color-mix(in srgb, var(--color-app-mission) 35%, transparent)';
                   }}
                   onMouseLeave={e => {
                     (e.currentTarget as HTMLAnchorElement).style.color = 'var(--color-app-text-dim)';

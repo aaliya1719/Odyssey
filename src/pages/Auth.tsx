@@ -36,7 +36,7 @@ export default function Auth() {
     return (
       <div className="flex justify-center items-start pt-16 pb-24 px-4">
         <div className="w-full max-w-md rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}>
-          <p className="text-sm" style={{ color: '#E07070' }}>{callbackError}</p>
+          <p className="text-sm" style={{ color: 'var(--color-status-urgent)' }}>{callbackError}</p>
           <a href="/auth" className="inline-block mt-5 text-sm underline underline-offset-2" style={{ color: 'var(--color-app-mission)' }}>
             Return to sign in
           </a>
@@ -130,7 +130,7 @@ export default function Auth() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
             {success && (
-              <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(74,140,106,0.1)', border: '1px solid rgba(74,140,106,0.25)', color: '#4A8C6A' }}>
+              <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-success) 25%, transparent)', color: 'var(--color-app-success)' }}>
                 {success}
               </div>
             )}
@@ -138,9 +138,9 @@ export default function Auth() {
               <div
                 className="rounded-lg p-3 text-sm"
                 style={{
-                  backgroundColor: 'rgba(168,59,59,0.1)',
-                  border: '1px solid rgba(168,59,59,0.25)',
-                  color: '#E07070',
+                  backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)',
+                  color: 'var(--color-status-urgent)',
                 }}
               >
                 {error}
