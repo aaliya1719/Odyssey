@@ -21,6 +21,7 @@ import type {
 } from '../lib/odysseyTypes';
 import { interpret } from '../lib/interpreter';          // deterministic fallback
 import { buildApproaches } from '../lib/planner';         // deterministic fallback
+import { HEAVY_NOTE } from '../lib/planContext';
 import { isValidMissionDuration } from '../lib/missionDuration';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -180,10 +181,10 @@ export async function generatePlans(
 
   // ── Deterministic fallback ────────────────────────────────────────────────
   console.warn('[Odyssey AI] generatePlans: AI unavailable, using deterministic fallback');
-  return deterministicPlans(interpretation);
+  return deterministicPlans(ctx, interpretation);
 }
 
-function deterministicPlans(interpretation: AIInterpretation): AIPlans {
+function deterministicPlans(ctx: CaptureContext, interpretation: AIInterpretation): AIPlans {
   // Map AIItems back to InterpretedItems for the existing planner
   const interpretedItems = interpretation.items.map(ai => ({
     text:          ai.text,
@@ -194,7 +195,7 @@ function deterministicPlans(interpretation: AIInterpretation): AIPlans {
     isoDeadline:   ai.isoDeadline ?? undefined,
   }));
 
-  const approaches = buildApproaches(interpretedItems);
+  const approaches = buildApproaches(interpretedItems, new Date(), ctx);
 
   const plans: AIPlan[] = approaches.map(approach => ({
     id:              approach.id as ApproachId,
@@ -346,7 +347,8 @@ function deterministicMission(ctx: CaptureContext, plan: AIPlan): AIMission {
 
   const derived = deriveMissionFromTask({
     title: first.text,
-    description: first.rationale,
+    // The note is advice for the plan card, not part of the mission objective
+    description: first.rationale.replace(HEAVY_NOTE, ''),
     deadline: first.deadlineLabel,
     priority: first.priority,
   });
