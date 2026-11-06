@@ -154,15 +154,24 @@ export default function Execute() {
             No mission selected
           </h2>
           <p className="text-sm mb-7" style={{ color: 'var(--color-app-text-muted)' }}>
-            Choose a mission from the Plan page to begin your expedition.
+            Execute starts from a plan. Capture what you want to do next, or pick a mission you already planned.
           </p>
-          <Link
-            to="/mission"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium"
-            style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
-          >
-            Go to Plan →
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              to="/home"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium"
+              style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
+            >
+              Capture your next move →
+            </Link>
+            <Link
+              to="/mission"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium"
+              style={{ color: 'var(--color-app-mission)', border: '1px solid rgba(184,122,85,0.35)' }}
+            >
+              Select a mission
+            </Link>
+          </div>
         </div>
       </div>
     );
