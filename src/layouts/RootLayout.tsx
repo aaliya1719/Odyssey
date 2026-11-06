@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import AtmosphericBackground from '../components/AtmosphericBackground';
 import { useAuth } from '../hooks/useAuth';
 import ThemeToggle from '../components/ThemeToggle';
+import { missionService } from '../services/missionService';
+import { hasMissionToExecute } from '../lib/executeHighlight';
 
 const NAV_LINKS = [
   { to: '/home', label: 'Capture', icon: (
@@ -40,6 +42,16 @@ export default function RootLayout() {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
+  const [missionReady, setMissionReady] = useState(false);
+
+  // Execute only stands out once there is something to execute.
+  useEffect(() => {
+    let cancelled = false;
+    missionService.getMissions()
+      .then(missions => { if (!cancelled) setMissionReady(hasMissionToExecute(missions)); })
+      .catch(() => { if (!cancelled) setMissionReady(false); });
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   const isLanding  = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
@@ -112,7 +124,7 @@ export default function RootLayout() {
             <nav className="flex items-center gap-1">
               {NAV_LINKS.map(({ to, label, icon }) => {
                 const active    = location.pathname === to;
-                const isExecute = to === '/execute';
+                const isExecute = to === '/execute' && missionReady;
                 return (
                   <Link
                     key={to}
