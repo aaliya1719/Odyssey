@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { interpretCapture } from '../services/aiService';
 import { useMissionTimer } from '../hooks/useMissionTimer';
+import { useVoiceCapture } from '../hooks/useVoiceCapture';
+import { composeDictation, type VoiceResult } from '../lib/voiceCapture';
 import { formatDuration } from '../components/FocusTimer';
 import type {
   CaptureContext,
@@ -32,6 +34,37 @@ const CATEGORY_META: Record<AIItemCategory, { label: string; color: string; bg: 
   goal:     { label: 'Ongoing goal',  color: 'var(--color-status-low)', bg: 'color-mix(in srgb, var(--color-status-low) 7%, transparent)', border: 'color-mix(in srgb, var(--color-status-low) 18%, transparent)' },
 };
 
+// ─── Voice level indicator ────────────────────────────────────────────────────
+
+const METER_WEIGHTS = [0.55, 0.85, 1, 0.85, 0.55];
+
+/** Bars that follow the microphone level, or a gentle pulse when the browser gives no level. */
+function VoiceMeter({ level, active }: { level: number | null; active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="voice-meter"
+      data-level={level === null ? 'pulse' : level.toFixed(2)}
+      className="flex items-end gap-0.5 h-5"
+    >
+      {METER_WEIGHTS.map((w, i) => (
+        <span
+          key={i}
+          className={level === null && active ? 'animate-pulse motion-reduce:animate-none' : ''}
+          style={{
+            width:           3,
+            borderRadius:    2,
+            backgroundColor: 'var(--color-app-mission)',
+            height:          level === null ? 8 + Math.round(w * 8) : 4 + Math.round(level * w * 16),
+            transition:      'height 80ms linear',
+            animationDelay:  `${i * 90}ms`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
 // ─── Capture form ─────────────────────────────────────────────────────────────
 
 interface CaptureFormProps {
@@ -48,103 +81,40 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   const [horizon,           setHorizon]            = useState<PlanHorizon>('today');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Speech-to-text state ───────────────────────────────────────────────────
-  const [isListening,       setIsListening]       = useState(false);
-  const [speechError,       setSpeechError]       = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  // ── Voice dictation ────────────────────────────────────────────────────────
+  // The logic lives in src/lib/voiceCapture.ts. While recording, the box shows what was there plus what has
+  // been said so far, and it is read-only; Finish puts the lines into the box for editing, Cancel drops them.
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
 
-  // Check Web Speech API availability
-  const isSpeechSupported = typeof window !== 'undefined' && Boolean(
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-  );
-
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-      }
-    };
+  const handleVoiceResult = useCallback((result: VoiceResult) => {
+    if (result.kind !== 'finished' || result.segments.length === 0) return;
+    setRawInput(prev => composeDictation(prev, result.segments));
+    setVoiceNotice('Dictation added. Review and edit it before you send.');
+    setTimeout(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }, 0);
   }, []);
 
-  const toggleListening = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-      }
-      setIsListening(false);
-      return;
-    }
+  const voice = useVoiceCapture(handleVoiceResult);
+  const recording = voice.phase !== 'idle';
+  const shownText = recording ? composeDictation(rawInput, voice.segments) : rawInput;
+  const voiceHint = !voice.supported
+    ? "Voice input isn't available in this browser. Type your tasks above."
+    : voiceNotice && !recording && !voice.error ? voiceNotice : null;
 
-    if (!isSpeechSupported) return;
-
-    setSpeechError(null);
-    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognitionClass();
-    recognitionRef.current = recognition;
-
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = navigator.language || 'en-US';
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setSpeechError(null);
-    };
-
-    recognition.onresult = (event: any) => {
-      let interimTranscript = '';
-      let finalChunk = '';
-
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalChunk += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-
-      if (finalChunk) {
-        setRawInput(prev => {
-          const separator = prev.length > 0 && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '';
-          const next = prev + separator + finalChunk.trim();
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.style.height = 'auto';
-              textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-            }
-          }, 0);
-          return next;
-        });
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      console.warn('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setSpeechError('Microphone access denied. Please check your browser settings.');
-      } else if (event.error === 'no-speech') {
-        // Ignored or harmless timeout
-      } else {
-        setSpeechError(`Voice input error: ${event.error}`);
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    try {
-      recognition.start();
-    } catch (err: any) {
-      console.warn('Error starting speech recognition:', err);
-      setSpeechError('Could not start voice input.');
-      setIsListening(false);
-    }
-  };
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [shownText]);
 
   const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRawInput(e.target.value);
+    setVoiceNotice(null);
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
@@ -169,11 +139,7 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   };
 
   const submit = () => {
-    if (isListening && recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      setIsListening(false);
-    }
-    if (!rawInput.trim()) return;
+    if (recording || !rawInput.trim()) return;
     onInterpret({
       rawInput:         rawInput.trim(),
       availableHours,
@@ -198,10 +164,11 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
   return (
     <div
       className="rounded-xl overflow-hidden"
+      onKeyDown={e => { if (recording && e.key === 'Escape') { e.preventDefault(); voice.cancel(); } }}
       style={{
         background:  'rgba(8, 19, 33, 0.85)',
-        border:      isListening ? '1px solid color-mix(in srgb, var(--color-app-mission) 70%, transparent)' : '1px solid rgba(30, 60, 100, 0.45)',
-        boxShadow:   isListening ? '0 0 16px -2px color-mix(in srgb, var(--color-app-mission) 30%, transparent)' : '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
+        border:      recording ? '1px solid color-mix(in srgb, var(--color-app-mission) 70%, transparent)' : '1px solid rgba(30, 60, 100, 0.45)',
+        boxShadow:   recording ? '0 0 16px -2px color-mix(in srgb, var(--color-app-mission) 30%, transparent)' : '0 2px 24px -4px rgba(3, 6, 13, 0.5)',
         transition:  'border-color 0.3s ease, box-shadow 0.3s ease',
       }}
     >
@@ -209,9 +176,11 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
       <div className="relative">
         <textarea
           ref={textareaRef}
-          value={rawInput}
+          value={shownText}
           onChange={autoResize}
           onKeyDown={handleKeyDown}
+          readOnly={recording}
+          aria-describedby={voiceHint ? 'capture-voice-hint' : undefined}
           placeholder="What's on your mind? Dump it all here — assignments, deadlines, goals, anything…"
           rows={4}
           className="w-full bg-transparent resize-none pl-5 pr-14 pt-5 pb-3 text-base leading-relaxed focus:outline-none"
@@ -225,56 +194,105 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
           disabled={interpreting}
         />
 
-        {/* Microphone action button inside textarea container */}
-        {isSpeechSupported && (
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            {isListening && (
-              <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 15%, transparent)',
-                  color: 'var(--color-app-mission)',
-                  border: '1px solid color-mix(in srgb, var(--color-app-mission) 30%, transparent)',
-                }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-app-mission)] animate-pulse" />
-                Listening…
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={toggleListening}
-              disabled={interpreting}
-              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
-              title={isListening ? 'Stop listening' : 'Dictate with voice'}
-              className="p-2 rounded-lg cursor-pointer border transition-all flex items-center justify-center"
-              style={{
-                backgroundColor: isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.3)',
-                borderColor:     isListening ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.5)',
-                color:           isListening ? '#fff' : 'var(--color-app-text-muted)',
-                boxShadow:       isListening ? '0 0 10px color-mix(in srgb, var(--color-app-mission) 50%, transparent)' : 'none',
-              }}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V23M8 23h8" />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Voice input error / notice */}
-      {speechError && (
-        <div className="mx-5 mb-2 px-3 py-1.5 rounded-lg text-xs flex items-center justify-between"
-          style={{ background: 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}>
-          <span>{speechError}</span>
+        {/* Microphone button inside textarea container: starts voice input, and finishes it while recording */}
+        <div className="absolute top-4 right-4">
           <button
             type="button"
-            onClick={() => setSpeechError(null)}
-            className="text-xs bg-transparent border-none cursor-pointer ml-2"
+            onClick={recording ? voice.finish : voice.start}
+            disabled={interpreting || !voice.supported || voice.phase === 'stopping'}
+            aria-pressed={recording}
+            aria-label={!voice.supported ? 'Voice input is not available in this browser' : recording ? 'Finish voice input' : 'Start voice input'}
+            title={!voice.supported ? 'Voice input is not available in this browser' : recording ? 'Finish and keep what you said' : 'Dictate with voice'}
+            className="p-2 rounded-lg cursor-pointer border transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: recording ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.3)',
+              borderColor:     recording ? 'var(--color-app-mission)' : 'rgba(30, 60, 100, 0.5)',
+              color:           recording ? '#fff' : 'var(--color-app-text-muted)',
+              boxShadow:       recording ? '0 0 10px color-mix(in srgb, var(--color-app-mission) 50%, transparent)' : 'none',
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V23M8 23h8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Recording bar: level, what is being heard, Cancel and Finish */}
+      {recording && (
+        <div
+          role="group"
+          aria-label="Voice recording"
+          data-testid="voice-bar"
+          className="mx-5 mb-3 px-3 py-2 rounded-lg flex flex-wrap items-center gap-x-3 gap-y-2"
+          style={{
+            background: 'color-mix(in srgb, var(--color-app-mission) 10%, transparent)',
+            border:     '1px solid color-mix(in srgb, var(--color-app-mission) 35%, transparent)',
+          }}
+        >
+          <VoiceMeter level={voice.level} active={voice.phase === 'recording'} />
+          <span role="status" aria-live="polite" className="text-xs font-medium" style={{ color: 'var(--color-app-mission)' }}>
+            {voice.phase === 'starting'
+              ? 'Waiting for the microphone…'
+              : voice.phase === 'stopping'
+                ? 'Finishing…'
+                : 'Listening. Pause between tasks to start a new line.'}
+          </span>
+          {voice.interim && (
+            <span aria-hidden="true" data-testid="voice-interim" className="text-xs italic min-w-0 basis-full sm:basis-0 sm:flex-1 line-clamp-2 sm:line-clamp-1" style={{ color: 'var(--color-app-text-dim)' }}>
+              {voice.interim}
+            </span>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={voice.cancel}
+              className="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border"
+              style={{ backgroundColor: 'transparent', color: 'var(--color-app-text-muted)', borderColor: 'rgba(30,60,100,0.5)' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={voice.finish}
+              disabled={voice.phase === 'stopping'}
+              className="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-none disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
+            >
+              Finish
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Voice input error: what happened and what to do */}
+      {voice.error && (
+        <div
+          role="alert"
+          data-testid="voice-error"
+          className="mx-5 mb-2 px-3 py-2 rounded-lg text-xs flex items-start justify-between gap-3"
+          style={{ background: 'color-mix(in srgb, var(--color-app-danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 25%, transparent)', color: 'var(--color-status-urgent)' }}
+        >
+          <span>
+            <span className="font-semibold block">{voice.error.message}</span>
+            <span className="block mt-0.5" style={{ color: 'var(--color-app-text-muted)' }}>{voice.error.hint}</span>
+          </span>
+          <button
+            type="button"
+            onClick={voice.dismissError}
+            aria-label="Dismiss voice input message"
+            className="text-sm bg-transparent border-none cursor-pointer leading-none"
             style={{ color: 'var(--color-status-urgent)' }}
           >×</button>
         </div>
+      )}
+
+      {/* Helper text: no support, or a reminder to review what was dictated */}
+      {voiceHint && (
+        <p id="capture-voice-hint" role="status" className="mx-5 mb-2 text-xs" style={{ color: 'var(--color-app-text-dim)' }}>
+          {voiceHint}
+        </p>
       )}
 
       {/* Structured context */}
@@ -428,7 +446,8 @@ function CaptureForm({ onInterpret, interpreting }: CaptureFormProps) {
         <button
           type="button"
           onClick={submit}
-          disabled={!rawInput.trim() || interpreting}
+          disabled={!rawInput.trim() || interpreting || recording}
+          title={recording ? 'Finish voice input first' : undefined}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer border-none disabled:opacity-30 transition-all"
           style={{ backgroundColor: 'var(--color-app-mission)', color: '#fff' }}
         >
