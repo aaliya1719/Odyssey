@@ -355,7 +355,7 @@ describe('portabilityService', () => {
   it('successfully executes replace in Supabase authenticated mode', async () => {
     mockUser = { id: 'supabase-user-123' };
 
-    mockFrom.mockImplementation((table: string) => ({
+    mockFrom.mockImplementation((_table: string) => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),

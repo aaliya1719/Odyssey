@@ -169,7 +169,7 @@ export default function Odyssey() {
       <div className="max-w-xl mx-auto mt-16 rounded-xl p-6 text-center"
         style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-app-danger) 20%, transparent)' }}>
         <p className="text-sm mb-3" style={{ color: 'var(--color-status-urgent)' }}>{error}</p>
-        <button onClick={load} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
+        <button onClick={() => load()} className="px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none"
           style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-danger) 20%, transparent)', color: 'var(--color-status-urgent)' }}>Retry</button>
       </div>
     );

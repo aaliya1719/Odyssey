@@ -116,9 +116,13 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
   const validatedMissions: Mission[] = [];
   const validatedSessions: FocusSession[] = [];
 
+  const tasksList: unknown[] = Array.isArray(rawTasks) ? rawTasks : [];
+  const missionsList: unknown[] = Array.isArray(rawMissions) ? rawMissions : [];
+  const sessionsList: unknown[] = Array.isArray(rawSessions) ? rawSessions : [];
+
   // Validate individual tasks
-  for (let i = 0; i < rawTasks.length; i++) {
-    const item = rawTasks[i];
+  for (let i = 0; i < tasksList.length; i++) {
+    const item = tasksList[i];
     const path = `tasks[${i}]`;
 
     if (!isRecord(item)) {
@@ -181,8 +185,8 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
   }
 
   // Validate individual missions
-  for (let i = 0; i < rawMissions.length; i++) {
-    const item = rawMissions[i];
+  for (let i = 0; i < missionsList.length; i++) {
+    const item = missionsList[i];
     const path = `missions[${i}]`;
 
     if (!isRecord(item)) {
@@ -227,8 +231,8 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
   }
 
   // Validate individual focus sessions
-  for (let i = 0; i < rawSessions.length; i++) {
-    const item = rawSessions[i];
+  for (let i = 0; i < sessionsList.length; i++) {
+    const item = sessionsList[i];
     const path = `sessions[${i}]`;
 
     if (!isRecord(item)) {
