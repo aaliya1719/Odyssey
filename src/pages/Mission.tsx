@@ -6,6 +6,7 @@ import { generatePlans, suggestMissionFromPlan, suggestMissionForTask } from '..
 import type { Task, Mission } from '../types/database';
 import type { CreateMissionInput } from '../services/missionService';
 import { deriveMissionFromTask } from '../lib/missionDerivation';
+import { rankNextMoves } from '../lib/nextMoveEngine';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { formatDuration } from '../components/FocusTimer';
 import { parseMissionDuration, safeMissionDuration, MAX_MISSION_MINUTES } from '../lib/missionDuration';
@@ -648,6 +649,10 @@ export default function Mission() {
   const [chosenPlan,    setChosenPlan]    = useState<AIPlan | null>(null);
   const [aiMission,     setAiMission]     = useState<AIMission | null>(null);
   const [prefillInput,  setPrefillInput]  = useState<CreateMissionInput | null>(null);
+  // Next Move context: what the user tells us about right now, and tasks they passed on.
+  const [moveEnergy,    setMoveEnergy]    = useState<'low' | 'medium' | 'high' | null>(captureContext?.energy ?? null);
+  const [moveMinutes,   setMoveMinutes]   = useState<number | null>(null);
+  const [skippedMoves,  setSkippedMoves]  = useState<string[]>([]);
 
   useEffect(() => { load(); }, []);
 
@@ -971,18 +976,10 @@ export default function Mission() {
 
           {/* 1. SPOTLIGHT: Recommended Next Move (Top Task when no active mission) */}
           {activeMissions.length === 0 && tasks.filter(t => t.status !== 'completed' && t.status !== 'archived').length > 0 && (() => {
-            const activeList = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
-            const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
-            const sorted = [...activeList].sort((a, b) => {
-              const pA = priorityOrder[a.priority] ?? 2;
-              const pB = priorityOrder[b.priority] ?? 2;
-              if (pB !== pA) return pB - pA;
-              if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-              if (a.deadline) return -1;
-              if (b.deadline) return 1;
-              return 0;
-            });
-            const topTask = sorted[0];
+            const ranked = rankNextMoves(tasks, { energy: moveEnergy, availableMinutes: moveMinutes });
+            const remaining = ranked.filter(m => !skippedMoves.includes(m.task.id));
+            const move = remaining[0] ?? ranked[0];
+            const topTask = move.task;
             const derived = deriveMissionFromTask(topTask);
 
             return (
@@ -992,6 +989,26 @@ export default function Mission() {
                   <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-app-mission)' }}>
                     Recommended Next Move
                   </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mb-3" role="group" aria-label="Tell Odyssey about right now">
+                  <span className="text-xs" style={{ color: 'var(--color-app-text-dim)' }}>Energy</span>
+                  {(['low', 'medium', 'high'] as const).map(level => (
+                    <button key={level} type="button" aria-pressed={moveEnergy === level}
+                      onClick={() => { setMoveEnergy(moveEnergy === level ? null : level); setSkippedMoves([]); }}
+                      className="text-xs px-2.5 py-1 rounded-full cursor-pointer"
+                      style={{ border: '1px solid var(--color-app-border)', backgroundColor: moveEnergy === level ? 'color-mix(in srgb, var(--color-app-mission) 20%, transparent)' : 'transparent', color: 'var(--color-app-text)' }}>
+                      {level}
+                    </button>
+                  ))}
+                  <span className="text-xs ml-2" style={{ color: 'var(--color-app-text-dim)' }}>Time</span>
+                  {[15, 30, 60, 120].map(mins => (
+                    <button key={mins} type="button" aria-pressed={moveMinutes === mins}
+                      onClick={() => { setMoveMinutes(moveMinutes === mins ? null : mins); setSkippedMoves([]); }}
+                      className="text-xs px-2.5 py-1 rounded-full cursor-pointer"
+                      style={{ border: '1px solid var(--color-app-border)', backgroundColor: moveMinutes === mins ? 'color-mix(in srgb, var(--color-app-mission) 20%, transparent)' : 'transparent', color: 'var(--color-app-text)' }}>
+                      {mins < 60 ? `${mins}m` : `${mins / 60}h`}
+                    </button>
+                  ))}
                 </div>
                 <div
                   className="rounded-2xl p-6 app-spotlight"
@@ -1020,6 +1037,10 @@ export default function Mission() {
                     {derived.objective}
                   </p>
 
+                  <p className="text-xs mb-3" style={{ color: 'var(--color-app-gold)' }} data-testid="next-move-rationale">
+                    Why this one: {move.rationale}
+                  </p>
+
                   <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-lg flex items-start gap-2.5 app-panel-inset"
                     style={{ border: '1px solid rgba(49,75,115,0.35)' }}>
                     <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24"
@@ -1042,6 +1063,14 @@ export default function Mission() {
                       {derived.planned_minutes}m suggested block
                     </span>
 
+                    {ranked.length > 1 && (
+                      <button type="button"
+                        onClick={() => setSkippedMoves(remaining.length > 1 ? [...skippedMoves, topTask.id] : [])}
+                        className="text-xs cursor-pointer border-none bg-transparent underline"
+                        style={{ color: 'var(--color-app-text-muted)' }}>
+                        Pick another
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setPrefillInput(null);
