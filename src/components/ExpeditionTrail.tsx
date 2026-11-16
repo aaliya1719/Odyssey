@@ -10,6 +10,7 @@ import {
   pathThrough,
 } from '../lib/expeditionTrail';
 import type { Waypoint } from '../lib/expeditionTrail';
+import { useTheme } from '../hooks/useTheme';
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
 
@@ -269,6 +270,8 @@ function BaseCampNotice({ className = '', style }: { className?: string; style?:
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function ExpeditionTrail({ missions, sessions }: { missions: Mission[]; sessions: FocusSession[] }) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const waypoints = useMemo(() => buildWaypoints(missions, sessions), [missions, sessions]);
   const total = waypoints.length;
   const totalMinutes = useMemo(() => waypoints.reduce((sum, w) => sum + w.focusMinutes, 0), [waypoints]);
@@ -342,8 +345,20 @@ export default function ExpeditionTrail({ missions, sessions }: { missions: Miss
       style={{
         backgroundColor: 'var(--color-app-surface)',
         border: '1px solid var(--color-app-border)',
-        backgroundImage: 'radial-gradient(var(--color-app-border) 1px, transparent 1px)',
-        backgroundSize: '22px 22px',
+        backgroundImage: [
+          isLight
+            ? 'linear-gradient(135deg, rgba(248, 250, 247, 0.76), rgba(232, 239, 234, 0.84))'
+            : 'linear-gradient(135deg, rgba(3, 6, 13, 0.64), rgba(3, 6, 13, 0.82))',
+          isLight
+            ? 'radial-gradient(ellipse at 50% 45%, rgba(255, 248, 224, 0.2), transparent 72%)'
+            : 'radial-gradient(ellipse at 50% 45%, rgba(12, 28, 54, 0.12), rgba(3, 6, 13, 0.24) 78%)',
+          `url('/${isLight ? 'odyssey2-bg.png' : 'odyssey-bg.png'}')`,
+          'radial-gradient(var(--color-app-border) 1px, transparent 1px)',
+        ].join(', '),
+        backgroundSize: 'cover, cover, cover, 22px 22px',
+        backgroundPosition: 'center, center, center, top left',
+        backgroundRepeat: 'no-repeat, no-repeat, no-repeat, repeat',
+        backgroundBlendMode: 'normal, normal, normal, normal',
       }}
     >
       <div className="flex items-center gap-2 mb-3">
