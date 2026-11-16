@@ -7,6 +7,7 @@ import { interpretCapture } from '../services/aiService';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { useVoiceCapture } from '../hooks/useVoiceCapture';
 import { composeDictation, type VoiceResult } from '../lib/voiceCapture';
+import { applyClarification, clarificationKind, skipClarification } from '../lib/clarification';
 import { formatDuration } from '../components/FocusTimer';
 import type {
   CaptureContext,
@@ -486,6 +487,8 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
 
   const updateText = (i: number, text: string) =>
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, text } : it));
+  const updateItem = (i: number, item: AIItem) =>
+    setItems(prev => prev.map((it, idx) => idx === i ? item : it));
   const removeItem = (i: number) =>
     setItems(prev => prev.filter((_, idx) => idx !== i));
 
@@ -588,6 +591,7 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
                     cm={cm}
                     pc={pc}
                     onEdit={text => updateText(globalIdx, text)}
+                    onUpdate={updated => updateItem(globalIdx, updated)}
                     onRemove={() => removeItem(globalIdx)}
                   />
                 );
@@ -641,16 +645,32 @@ function ReviewPanel({ ctx, interpretation, onReset, onConfirm }: ReviewPanelPro
 }
 
 function ReviewItemRow({
-  item, cm, pc, onEdit, onRemove,
+  item, cm, pc, onEdit, onUpdate, onRemove,
 }: {
   item:     AIItem;
   cm:       { color: string; bg: string; border: string };
   pc:       { bg: string; text: string; border: string };
   onEdit:   (text: string) => void;
+  onUpdate: (item: AIItem) => void;
   onRemove: () => void;
 }) {
   const [editing,   setEditing]   = useState(false);
   const [editValue, setEditValue] = useState(item.text);
+  const [answer, setAnswer] = useState('');
+  const [clarificationError, setClarificationError] = useState<string | null>(null);
+  const inputId = React.useId();
+  const kind = clarificationKind(item);
+
+  const clarify = (value: string) => {
+    if (!kind) return;
+    const updated = applyClarification(item, kind, value);
+    if (!updated) {
+      setClarificationError(kind === 'timeline' ? 'Choose today, tomorrow, next week, or a future date.' : 'Enter a specific task or deliverable.');
+      return;
+    }
+    setClarificationError(null);
+    onUpdate(updated);
+  };
 
   const commit = () => {
     setEditing(false);
@@ -705,12 +725,45 @@ function ReviewItemRow({
               daily
             </span>
           )}
-          {item.ambiguity && (
-            <span className="text-[0.6rem] italic" style={{ color: 'var(--color-app-text-dim)' }}>
-              ⚠ {item.ambiguity}
-            </span>
-          )}
         </div>
+
+        {kind && (
+          <div className="mt-3 rounded-lg px-3 py-2.5" style={{ background: 'rgba(8, 19, 33, 0.65)', border: '1px solid rgba(80, 120, 170, 0.35)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--color-app-text)' }}>
+              {kind === 'timeline' ? 'When should this be done?' : 'What is the specific deliverable?'}
+            </p>
+            {item.ambiguity && <p className="mt-1 text-xs" style={{ color: 'var(--color-app-text-dim)' }}>{item.ambiguity}</p>}
+            {kind === 'timeline' && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {([['today', 'Today'], ['tomorrow', 'Tomorrow'], ['next_week', 'Next week']] as const).map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => clarify(value)}
+                    className="rounded-md px-2.5 py-1 text-xs cursor-pointer"
+                    style={{ color: 'var(--color-app-text)', border: '1px solid rgba(80, 120, 170, 0.5)', background: 'transparent' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={e => { e.preventDefault(); clarify(answer); }}>
+              <div className="flex-1 min-w-[10rem]">
+                <label htmlFor={inputId} className="block text-xs mb-1" style={{ color: 'var(--color-app-text-dim)' }}>
+                  {kind === 'timeline' ? 'Or choose a date' : 'Task or deliverable'}
+                </label>
+                <input id={inputId} type={kind === 'timeline' ? 'date' : 'text'} value={answer}
+                  onChange={e => { setAnswer(e.target.value); setClarificationError(null); }}
+                  maxLength={kind === 'scope' ? 160 : undefined}
+                  className="w-full rounded-md px-2.5 py-1.5 text-xs"
+                  style={{ color: 'var(--color-app-text)', background: 'rgba(8, 19, 33, 0.9)', border: '1px solid rgba(80, 120, 170, 0.5)' }} />
+              </div>
+              <button type="submit" className="rounded-md px-2.5 py-1.5 text-xs font-semibold cursor-pointer border-none"
+                style={{ color: '#fff', background: 'var(--color-app-mission)' }}>Apply</button>
+              <button type="button" onClick={() => onUpdate(skipClarification(item))}
+                className="rounded-md px-2.5 py-1.5 text-xs cursor-pointer border-none bg-transparent"
+                style={{ color: 'var(--color-app-text-dim)' }}>Skip</button>
+            </form>
+            {clarificationError && <p role="alert" className="mt-1 text-xs" style={{ color: 'var(--color-status-urgent)' }}>{clarificationError}</p>}
+          </div>
+        )}
       </div>
 
       <button

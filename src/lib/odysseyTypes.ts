@@ -50,6 +50,8 @@ export interface AIItem {
   isConsistency: boolean;
   /** Any ambiguity Gemini flagged about this item */
   ambiguity?: string | null;
+  /** User chose to answer or skip the clarification in the review step */
+  clarificationDismissed?: boolean;
 }
 
 /**
