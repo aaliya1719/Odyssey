@@ -4,7 +4,15 @@ import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
 import type { Task, Mission, FocusSession } from '../types/database';
 import ExpeditionTrail from '../components/ExpeditionTrail';
-import { formatMinutes } from '../lib/expeditionTrail';
+import {
+  DEFAULT_TIME_WINDOW,
+  TIME_WINDOWS,
+  filterMissionsByWindow,
+  filterSessionsByWindow,
+  formatMinutes,
+  timeWindowLabel,
+} from '../lib/expeditionTrail';
+import type { TimeWindow } from '../lib/expeditionTrail';
 
 // Rank and checkpoint thresholds. These only feed the rank badge and the
 // checkpoint list in the Mission Log; the map itself is built from real missions.
@@ -32,6 +40,9 @@ export default function Journey() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
+  // "now" for the window edges; refreshed on load and whenever a horizon is picked
+  const [now, setNow] = useState(() => Date.now());
   const [showLog, setShowLog] = useState(false);
   const [logTab, setLogTab] = useState<'stats' | 'activity' | 'history'>('stats');
 
@@ -48,6 +59,7 @@ export default function Journey() {
       setTasks(t);
       setMissions(m);
       setSessions(s);
+      setNow(Date.now());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load journey data');
     } finally {
@@ -59,11 +71,26 @@ export default function Journey() {
 
   const completedTasks = useMemo(() => tasks.filter(t => t.status === 'completed'), [tasks]);
   const completedMissions = useMemo(() => missions.filter(m => m.status === 'completed'), [missions]);
-  const completedSessions = useMemo(() => sessions.filter(s => s.completed), [sessions]);
   const totalFocusMinutes = useMemo(() => sessions.reduce((a, s) => a + (s.duration_minutes ?? 0), 0), [sessions]);
   const totalXp = useMemo(
     () => completedTasks.length * 50 + completedMissions.length * 250 + totalFocusMinutes * 10,
     [completedTasks.length, completedMissions.length, totalFocusMinutes],
+  );
+
+  // Everything the trail and the quick stats show is narrowed to the chosen horizon.
+  // The rank, XP and Mission Log drawer stay lifetime on purpose.
+  const windowMissions = useMemo(
+    () => filterMissionsByWindow(completedMissions, timeWindow, now),
+    [completedMissions, timeWindow, now],
+  );
+  const windowSessions = useMemo(
+    () => filterSessionsByWindow(sessions, timeWindow, now),
+    [sessions, timeWindow, now],
+  );
+  const windowCompletedSessions = useMemo(() => windowSessions.filter(s => s.completed), [windowSessions]);
+  const windowFocusMinutes = useMemo(
+    () => windowSessions.reduce((a, s) => a + (s.duration_minutes ?? 0), 0),
+    [windowSessions],
   );
 
   const rank = useMemo(() => {
@@ -162,16 +189,49 @@ export default function Journey() {
       </div>
 
       {/* ─── Expedition milestone trail ───────────────────────────────────── */}
-      <ExpeditionTrail missions={missions} sessions={sessions} />
+      <div
+        role="group"
+        aria-label="Expedition time horizon"
+        className="flex gap-1.5 mb-3 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {TIME_WINDOWS.map(({ id, label }) => {
+          const active = id === timeWindow;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { setNow(Date.now()); setTimeWindow(id); }}
+              aria-pressed={active}
+              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer border whitespace-nowrap transition-colors"
+              style={{
+                color: active ? 'var(--color-app-mission)' : 'var(--color-app-text-muted)',
+                backgroundColor: active ? 'var(--color-app-mission-glow)' : 'var(--color-app-surface)',
+                borderColor: active ? 'var(--color-app-mission)' : 'var(--color-app-border)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* keyed by window so a picked waypoint does not carry over to a different one */}
+      <ExpeditionTrail
+        key={timeWindow}
+        missions={windowMissions}
+        sessions={sessions}
+        timeWindow={timeWindow}
+        hasHistory={completedMissions.length > windowMissions.length}
+      />
 
       {/* ─── Quick Stats row beneath the map ─────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
         {[
-          { label: 'Missions Done', value: completedMissions.length, color: 'var(--color-app-mission)' },
-          { label: 'Focus Time', value: formatMinutes(totalFocusMinutes), color: 'var(--color-app-gold)' },
-          { label: 'Sessions', value: completedSessions.length, color: 'var(--color-app-text)' },
-          { label: 'Tasks Cleared', value: `${completedTasks.length}/${tasks.length}`, color: 'var(--color-app-success)' },
-        ].map(({ label, value, color }) => (
+          { label: 'Missions Done', value: windowMissions.length, color: 'var(--color-app-mission)', scope: timeWindowLabel(timeWindow) },
+          { label: 'Focus Time', value: formatMinutes(windowFocusMinutes), color: 'var(--color-app-gold)', scope: timeWindowLabel(timeWindow) },
+          { label: 'Sessions', value: windowCompletedSessions.length, color: 'var(--color-app-text)', scope: timeWindowLabel(timeWindow) },
+          { label: 'Tasks Cleared', value: `${completedTasks.length}/${tasks.length}`, color: 'var(--color-app-success)', scope: 'All Time' },
+        ].map(({ label, value, color, scope }) => (
           <div
             key={label}
             className="rounded-xl p-3.5 flex flex-col gap-0.5"
@@ -182,6 +242,9 @@ export default function Journey() {
             </span>
             <span className="text-xl font-bold font-mono" style={{ color }}>
               {value}
+            </span>
+            <span className="text-[0.6rem] font-mono uppercase tracking-wider" style={{ color: 'var(--color-app-text-dim)' }}>
+              {scope}
             </span>
           </div>
         ))}
