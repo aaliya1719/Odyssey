@@ -7,6 +7,8 @@ import { useMissionTimer } from '../hooks/useMissionTimer';
 import { safeMissionDuration } from '../lib/missionDuration';
 import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction } from '../lib/keyboardShortcuts';
 import FinishSessionDialog from '../components/FinishSessionDialog';
+import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
+import type { TaskOutcome } from '../lib/taskFocus';
 import type { Mission, Task } from '../types/database';
 
 // XP values mirror Journey.tsx — single source of truth concept
@@ -24,6 +26,24 @@ export default function Execute() {
   const linkedTask      = (location.state as { mission?: Mission; linkedTask?: Task } | null)?.linkedTask ?? null;
 
   const [mission, setMission] = useState<Mission | null>(initialMission);
+
+  // The task this mission belongs to. It arrives in router state when launched from a task,
+  // otherwise (a restored mission, say) it is looked up by the mission's task_id.
+  const linkedTaskId = resolveLinkedTaskId(linkedTask?.id, mission?.task_id);
+  const [fetchedTask, setFetchedTask] = useState<Task | null>(null);
+  const parentTask = linkedTask && linkedTask.id === linkedTaskId
+    ? linkedTask
+    : fetchedTask && fetchedTask.id === linkedTaskId ? fetchedTask : null;
+  const [taskClosed, setTaskClosed] = useState(false);
+
+  useEffect(() => {
+    if (!linkedTaskId || linkedTask?.id === linkedTaskId) return;
+    let cancelled = false;
+    taskService.getTasks()
+      .then(tasks => { if (!cancelled) setFetchedTask(tasks.find(t => t.id === linkedTaskId) ?? null); })
+      .catch(error => console.warn('Could not load the linked task:', error));
+    return () => { cancelled = true; };
+  }, [linkedTaskId, linkedTask?.id]);
 
   useEffect(() => {
     if (initialMission) return;
@@ -105,20 +125,34 @@ export default function Execute() {
   const handlePause = async () => { try { await timer.pause(); } catch (e) { console.error(e); } };
   const handleResume = async () => { try { await timer.resume(); } catch (e) { console.error(e); } };
 
-  const handleComplete = async () => {
+  // Finishing a mission always logs the session. The parent task is only closed when the user
+  // picked "Mark task completed", so a task can span several missions.
+  const handleComplete = async (outcome: TaskOutcome = DEFAULT_TASK_OUTCOME) => {
     if (!mission || ending) return;
     try {
       await timer.complete();
       const m = await missionService.getMission(mission.id);
-      if (linkedTask || m.task_id) {
+      const taskId = resolveLinkedTaskId(linkedTask?.id, m.task_id);
+      const closeId = taskIdToComplete(outcome, taskId);
+      let closed = false;
+      if (closeId) {
         try {
-          await taskService.completeTask((linkedTask?.id || m.task_id)!);
+          await taskService.completeTask(closeId);
+          closed = true;
         } catch (taskErr) {
           console.warn('Could not mark linked task completed:', taskErr);
         }
       }
-      await loadNextMove(m.id, linkedTask?.id || m.task_id || undefined);
+      setTaskClosed(closed);
+      // a task that is still open can come up as the next move
+      await loadNextMove(m.id, closed ? taskId ?? undefined : undefined);
     } catch (e) { console.error(e); }
+  };
+
+  // A mission with a parent task asks what to do with the task first; one without just finishes.
+  const requestFinish = () => {
+    if (linkedTaskId) setFinishConfirmationOpen(true);
+    else void handleComplete();
   };
 
   // ── Derived display helpers ────────────────────────────────────────────────────
@@ -158,7 +192,7 @@ export default function Execute() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [mission, isFinished, ending, shortcutsOpen, finishConfirmationOpen, running, isPaused]);
 
-  const xpReward = XP_PER_MISSION + (linkedTask ? XP_PER_TASK : 0);
+  const xpReward = XP_PER_MISSION + (taskClosed ? XP_PER_TASK : 0);
 
   // circumference for SVG ring (r=88)
   const RING_R = 88;
@@ -280,9 +314,9 @@ export default function Execute() {
 
         {/* ── Mission identity ── */}
         <div className="px-5 pt-5 pb-4">
-          {linkedTask && (
+          {parentTask && (
             <p className="text-[0.65rem] font-mono mb-2" style={{ color: 'var(--color-app-text-dim)' }}>
-              ↳ linked task: {linkedTask.title}
+              ↳ linked task: {parentTask.title}
             </p>
           )}
           <h1
@@ -336,6 +370,11 @@ export default function Execute() {
             <p className="text-xs" style={{ color: 'var(--color-app-text-muted)' }}>
               +{xpReward} XP earned — your progress has been logged to your Journey.
             </p>
+            {parentTask && !taskClosed && (
+              <p className="text-xs mt-1" style={{ color: 'var(--color-app-text-dim)' }}>
+                “{parentTask.title}” stays open for your next session.
+              </p>
+            )}
           </div>
         )}
 
@@ -520,7 +559,7 @@ export default function Execute() {
                       Resume
                     </button>
                     <button
-                      onClick={handleComplete}
+                      onClick={requestFinish}
                       disabled={ending}
                       className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium cursor-pointer border-none transition-all disabled:opacity-50"
                       style={{
@@ -549,7 +588,7 @@ export default function Execute() {
                       Pause
                     </button>
                     <button
-                      onClick={handleComplete}
+                      onClick={requestFinish}
                       disabled={ending}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold cursor-pointer border-none transition-all disabled:opacity-50 active:scale-95"
                       style={{
@@ -716,9 +755,11 @@ export default function Execute() {
       <FinishSessionDialog
         open={finishConfirmationOpen}
         onClose={closeFinishConfirmation}
-        onConfirm={() => {
+        hasLinkedTask={Boolean(linkedTaskId)}
+        linkedTaskTitle={parentTask?.title ?? null}
+        onConfirm={outcome => {
           closeFinishConfirmation();
-          void handleComplete();
+          void handleComplete(outcome);
         }}
       />
     </div>

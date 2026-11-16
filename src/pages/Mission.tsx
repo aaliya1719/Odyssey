@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
+import { focusService } from '../services/focusService';
 import { generatePlans, suggestMissionFromPlan, suggestMissionForTask } from '../services/aiService';
-import type { Task, Mission } from '../types/database';
+import type { Task, Mission, FocusSession } from '../types/database';
+import { formatTaskFocus, taskFocusTotals } from '../lib/taskFocus';
 import type { CreateMissionInput } from '../services/missionService';
 import { deriveMissionFromTask } from '../lib/missionDerivation';
 import { rankNextMoves } from '../lib/nextMoveEngine';
@@ -493,10 +495,12 @@ function CreateMissionPanel({
 // ─── Mission card (existing list) ─────────────────────────────────────────────
 
 function MissionCard({
-  mission, linkedTask, onDelete, onExecute,
+  mission, linkedTask, focusSummary, onDelete, onExecute,
 }: {
   mission:     Mission;
   linkedTask?: Task | null;
+  /** e.g. "2 sessions · 50m logged" across all missions of the linked task. */
+  focusSummary?: string | null;
   onDelete:    (id: string) => void;
   onExecute:   (m: Mission, linkedTask?: Task | null) => void;
 }) {
@@ -519,6 +523,11 @@ function MissionCard({
           {linkedTask && (
             <span className="text-xs truncate max-w-[180px]" style={{ color: 'var(--color-app-text-dim)' }}>
               ↳ {linkedTask.title}
+            </span>
+          )}
+          {linkedTask && focusSummary && (
+            <span className="text-[0.65rem] font-mono" style={{ color: 'var(--color-app-mission)' }}>
+              {focusSummary}
             </span>
           )}
         </div>
@@ -636,6 +645,7 @@ export default function Mission() {
 
   const [tasks,    setTasks]    = useState<Task[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
 
@@ -671,8 +681,12 @@ export default function Mission() {
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const [t, m] = await Promise.all([taskService.getTasks(), missionService.getMissions()]);
-      setTasks(t); setMissions(m);
+      const [t, m, s] = await Promise.all([
+        taskService.getTasks(),
+        missionService.getMissions(),
+        focusService.getAllSessions(),
+      ]);
+      setTasks(t); setMissions(m); setSessions(s);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
@@ -727,6 +741,8 @@ export default function Mission() {
   const activeMissions = missions.filter(m => ['planned', 'active', 'paused'].includes(m.status));
   const doneMissions   = missions.filter(m => ['completed', 'abandoned'].includes(m.status));
   const currentMission = activeMissions.find(m => m.status === 'active' || m.status === 'paused') ?? activeMissions[0] ?? null;
+  const focusByTask = taskFocusTotals(missions, sessions);
+  const focusSummaryFor = (taskId: string | null) => (taskId ? formatTaskFocus(focusByTask.get(taskId)) : null);
   const currentMissionTask = currentMission?.task_id ? tasks.find(t => t.id === currentMission.task_id) : null;
   const currentTimer = useMissionTimer(currentMission, updatedMission => {
     setMissions(previous => previous.map(m => m.id === updatedMission.id ? updatedMission : m));
@@ -857,7 +873,7 @@ export default function Mission() {
           {activeMissions.length > (currentMission ? 1 : 0) && (
             <section className="mb-8">
               <p className="text-xs font-bold uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--color-app-text-dim)' }}>Upcoming Missions</p>
-              <div className="space-y-2">{activeMissions.filter(m => m.id !== currentMission?.id).map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div>
+              <div className="space-y-2">{activeMissions.filter(m => m.id !== currentMission?.id).map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} focusSummary={focusSummaryFor(m.task_id)} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div>
             </section>
           )}
 
@@ -868,7 +884,7 @@ export default function Mission() {
             return <section className="mb-8"><p className="text-xs font-bold uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--color-app-text-dim)' }}>Other Tasks</p><div className="space-y-2">{availableTasks.map(t => <div key={t.id} className="rounded-lg px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }}><span className="text-sm truncate" style={{ color: 'var(--color-app-text)' }}>{t.title}</span><button onClick={() => { setPrefillInput(null); setAiMission(null); navigate('/mission', { state: { prefillTask: t } }); setPlanScreen('create_mission'); }} className="text-xs font-medium flex-shrink-0 cursor-pointer border-none bg-transparent" style={{ color: 'var(--color-app-mission)' }}>Start Mission</button></div>)}</div></section>;
           })()}
 
-          {doneMissions.length > 0 && <details className="group"><summary className="flex items-center gap-2 cursor-pointer list-none text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-app-text-dim)' }}><svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>Completed Missions ({doneMissions.length})</summary><div className="space-y-2 mt-3">{doneMissions.map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div></details>}
+          {doneMissions.length > 0 && <details className="group"><summary className="flex items-center gap-2 cursor-pointer list-none text-xs font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--color-app-text-dim)' }}><svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>Completed Missions ({doneMissions.length})</summary><div className="space-y-2 mt-3">{doneMissions.map(m => <MissionCard key={m.id} mission={m} linkedTask={tasks.find(t => t.id === m.task_id) ?? null} focusSummary={focusSummaryFor(m.task_id)} onDelete={handleDeleteMission} onExecute={handleExecute} />)}</div></details>}
         </>
       ) : showLegacyList ? (
         <>
@@ -910,6 +926,11 @@ export default function Mission() {
                   {activeMissions[0].task_id && (
                     <span className="text-xs truncate max-w-[240px]" style={{ color: 'var(--color-app-text-dim)' }}>
                       ↳ {tasks.find(t => t.id === activeMissions[0].task_id)?.title}
+                    </span>
+                  )}
+                  {focusSummaryFor(activeMissions[0].task_id) && (
+                    <span className="text-[0.65rem] font-mono" style={{ color: 'var(--color-app-mission)' }}>
+                      {focusSummaryFor(activeMissions[0].task_id)}
                     </span>
                   )}
                 </div>
@@ -1106,6 +1127,7 @@ export default function Mission() {
               {activeMissions.slice(1).map(m => (
                 <MissionCard key={m.id} mission={m}
                   linkedTask={tasks.find(t => t.id === m.task_id) ?? null}
+                  focusSummary={focusSummaryFor(m.task_id)}
                   onDelete={handleDeleteMission} onExecute={handleExecute} />
               ))}
             </div>
@@ -1188,6 +1210,7 @@ export default function Mission() {
                 {doneMissions.map(m => (
                   <MissionCard key={m.id} mission={m}
                     linkedTask={tasks.find(t => t.id === m.task_id) ?? null}
+                    focusSummary={focusSummaryFor(m.task_id)}
                     onDelete={handleDeleteMission} onExecute={handleExecute} />
                 ))}
               </div>
