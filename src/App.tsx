@@ -6,8 +6,8 @@ import Auth from './pages/Auth';
 import Home from './pages/Home';
 import Mission from './pages/Mission';
 import Execute from './pages/Execute';
-import Journey from './pages/Journey';
-import Odyssey from './pages/Odyssey';
+import JourneyHub from './pages/JourneyHub';
+import { LEGACY_ODYSSEY_REDIRECT } from './lib/journeyHub';
 import { ThemeProvider } from './hooks/useTheme';
 
 // ProtectedRoute is no longer used for core routes — the full Odyssey experience
@@ -24,8 +24,8 @@ const router = createBrowserRouter([
       { path: 'home',    element: <Home /> },
       { path: 'mission', element: <Mission /> },
       { path: 'execute', element: <Execute /> },
-      { path: 'journey', element: <Journey /> },
-      { path: 'odyssey', element: <Odyssey /> },
+      { path: 'journey', element: <JourneyHub /> },
+      { path: 'odyssey', element: <Navigate to={LEGACY_ODYSSEY_REDIRECT} replace /> },
       { path: '*',       element: <Navigate to="/" replace /> },
     ],
   },
