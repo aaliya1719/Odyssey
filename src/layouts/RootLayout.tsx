@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import AtmosphericBackground from '../components/AtmosphericBackground';
@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import ThemeToggle from '../components/ThemeToggle';
 import { missionService } from '../services/missionService';
 import { hasMissionToExecute } from '../lib/executeHighlight';
+import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog';
+import { globalShortcutAction, isEditableShortcutTarget } from '../lib/keyboardShortcuts';
 
 const NAV_LINKS = [
   { to: '/home', label: 'Capture', icon: (
@@ -38,6 +40,8 @@ export default function RootLayout() {
   const navigate  = useNavigate();
   const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const [missionReady, setMissionReady] = useState(false);
+  const [shortcutsRoute, setShortcutsRoute] = useState<string | null>(null);
+  const closeShortcuts = useCallback(() => setShortcutsRoute(null), []);
 
   // Execute only stands out once there is something to execute.
   useEffect(() => {
@@ -51,6 +55,23 @@ export default function RootLayout() {
   const isLanding  = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
   const isAppRoute = APP_ROUTES.some(r => location.pathname.startsWith(r));
+  const shortcutsOpen = isAppRoute && shortcutsRoute === location.pathname;
+
+  useEffect(() => {
+    if (!isAppRoute) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const blocked = event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey
+        || isEditableShortcutTarget(event.target)
+        || Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+      const action = globalShortcutAction(event.key, blocked);
+      if (!action) return;
+      event.preventDefault();
+      if (action === 'help') setShortcutsRoute(location.pathname);
+      else if (action !== location.pathname) navigate(action);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isAppRoute, location.pathname, navigate]);
 
   // Apply dark app-mode body class for all app routes (authenticated or not)
   useEffect(() => {
@@ -201,8 +222,14 @@ export default function RootLayout() {
       </header>
 
       <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
+        <Outlet context={{ shortcutsOpen }} />
       </main>
+      <footer className="mx-auto w-full max-w-7xl px-4 pb-5 text-right sm:px-6 lg:px-8">
+        <button type="button" onClick={() => setShortcutsRoute(location.pathname)} className="rounded-lg px-2 py-1 text-xs transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ color: 'var(--color-app-text-dim)' }}>
+          <kbd className="font-mono">?</kbd> Keyboard shortcuts
+        </button>
+      </footer>
+      <KeyboardShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
       <Analytics />
     </div>
   );

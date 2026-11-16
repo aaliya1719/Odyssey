@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useEffectEvent, useState } from 'react';
+import { Link, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { missionService } from '../services/missionService';
 import { taskService } from '../services/taskService';
 import { formatDuration } from '../components/FocusTimer';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { safeMissionDuration } from '../lib/missionDuration';
+import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction } from '../lib/keyboardShortcuts';
+import FinishSessionDialog from '../components/FinishSessionDialog';
 import type { Mission, Task } from '../types/database';
 
 // XP values mirror Journey.tsx — single source of truth concept
@@ -14,6 +16,9 @@ const XP_PER_TASK    = 50;
 export default function Execute() {
   const location = useLocation();
   const navigate  = useNavigate();
+  const { shortcutsOpen } = useOutletContext<{ shortcutsOpen: boolean }>();
+  const [finishConfirmationOpen, setFinishConfirmationOpen] = useState(false);
+  const closeFinishConfirmation = useCallback(() => setFinishConfirmationOpen(false), []);
 
   const initialMission = (location.state as { mission?: Mission; linkedTask?: Task } | null)?.mission ?? null;
   const linkedTask      = (location.state as { mission?: Mission; linkedTask?: Task } | null)?.linkedTask ?? null;
@@ -122,6 +127,36 @@ export default function Execute() {
   const isPaused     = mission?.status === 'paused';
   const isAbandoned  = mission?.status === 'abandoned';
   const isFinished   = isCompleted || isAbandoned;
+  const runTimerShortcut = useEffectEvent((action: 'pause' | 'resume') => {
+    if (action === 'pause') void handlePause();
+    else void handleResume();
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!mission || isFinished || ending) return;
+      const action = timerShortcutAction(
+        event.key,
+        event.code,
+        running ? 'running' : isPaused ? 'paused' : 'inactive',
+        shortcutsOpen || finishConfirmationOpen || event.defaultPrevented || event.repeat
+          || event.ctrlKey || event.metaKey || event.altKey
+          || Boolean(document.querySelector('[role="dialog"][aria-modal="true"]')),
+        isTypingShortcutTarget(event.target),
+        isEditableShortcutTarget(event.target),
+      );
+      if (!action) return;
+      event.preventDefault();
+      if (action === 'confirmFinish') {
+        setFinishConfirmationOpen(true);
+      } else {
+        runTimerShortcut(action);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mission, isFinished, ending, shortcutsOpen, finishConfirmationOpen, running, isPaused]);
 
   const xpReward = XP_PER_MISSION + (linkedTask ? XP_PER_TASK : 0);
 
@@ -678,6 +713,14 @@ export default function Execute() {
           </div>
         )}
       </div>
+      <FinishSessionDialog
+        open={finishConfirmationOpen}
+        onClose={closeFinishConfirmation}
+        onConfirm={() => {
+          closeFinishConfirmation();
+          void handleComplete();
+        }}
+      />
     </div>
   );
 }
