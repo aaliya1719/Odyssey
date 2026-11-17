@@ -11,6 +11,7 @@ import { composeDictation, type VoiceResult } from '../lib/voiceCapture';
 import { applyClarification, clarificationKind, skipClarification } from '../lib/clarification';
 import { formatDuration } from '../components/FocusTimer';
 import { formatTaskFocus, taskFocusTotals } from '../lib/taskFocus';
+import { localEndOfDayIso } from '../lib/localDate';
 import type {
   CaptureContext,
   AIInterpretation,
@@ -1013,7 +1014,7 @@ export default function Home() {
       const newTask = await taskService.createTask({
         title:             title.trim(),
         description:       description.trim() || undefined,
-        deadline:          deadline ? new Date(deadline).toISOString() : undefined,
+        deadline:          localEndOfDayIso(deadline),
         priority,
         estimated_minutes: estimatedMinutes ? parseInt(estimatedMinutes, 10) : undefined,
       });

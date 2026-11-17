@@ -7,14 +7,19 @@ async function getUser() {
   return data.user ?? null;
 }
 
+// Postgres error code for a unique constraint violation.
+const UNIQUE_VIOLATION = '23505';
+
 export const focusService = {
   async startSession(missionId: string): Promise<FocusSession> {
     const user = await getUser();
     if (!user) return Promise.resolve(localSessions.start(missionId));
 
-    const { data: existing, error: existingError } = await supabase
+    const findOpen = () => supabase
       .from('focus_sessions').select('*').eq('mission_id', missionId).is('ended_at', null)
       .order('started_at', { ascending: false }).limit(1).maybeSingle();
+
+    const { data: existing, error: existingError } = await findOpen();
     if (existingError) throw existingError;
     if (existing) return existing as FocusSession;
 
@@ -28,7 +33,16 @@ export const focusService = {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      // Another request (double click, second tab) opened the session between our
+      // check and insert. The unique index rejected ours, so use theirs.
+      if (error.code === UNIQUE_VIOLATION) {
+        const { data: winner, error: winnerError } = await findOpen();
+        if (winnerError) throw winnerError;
+        if (winner) return winner as FocusSession;
+      }
+      throw error;
+    }
     return data as FocusSession;
   },
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { focusService } from '../services/focusService';
 import { missionService } from '../services/missionService';
+import { singleFlight } from '../lib/singleFlight';
 import type { FocusSession, Mission } from '../types/database';
 
 function elapsedSeconds(sessions: FocusSession[], now = Date.now()): number {
@@ -67,7 +68,11 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
     };
   }, [running]);
 
-  const start = async () => {
+  // Start and Resume share one guard: while either is still running (it takes a few
+  // round trips), another click or shortcut press is ignored.
+  const [startGuard] = useState(() => singleFlight((run: () => Promise<void>) => run()));
+
+  const start = () => startGuard(async () => {
     if (!mission) return;
     let updatedMission = mission;
     if (updatedMission.status !== 'active') {
@@ -78,7 +83,7 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
     setSession(activeSession);
     await refresh();
     setRunning(true);
-  };
+  });
 
   const pause = async () => {
     if (!mission) return;
@@ -102,7 +107,7 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
     }
   };
 
-  const resume = async () => {
+  const resume = () => startGuard(async () => {
     if (!mission) return;
     const updatedMission = await missionService.activateMission(mission.id);
     onMissionUpdate(updatedMission);
@@ -110,7 +115,7 @@ export function useMissionTimer(mission: Mission | null, onMissionUpdate: (missi
     setSession(activeSession);
     await refresh();
     setRunning(true);
-  };
+  });
 
   const complete = async () => {
     if (!mission) return;

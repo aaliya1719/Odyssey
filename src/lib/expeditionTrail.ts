@@ -74,6 +74,77 @@ export function buildWaypoints(missions: Mission[], sessions: FocusSession[]): W
     });
 }
 
+// ─── Time horizon ────────────────────────────────────────────────────────────
+
+export type TimeWindow = 'today' | '7d' | '30d' | '90d' | '180d' | '365d' | 'all';
+
+export const DEFAULT_TIME_WINDOW: TimeWindow = '7d';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const TIME_WINDOWS: { id: TimeWindow; label: string; days: number | null }[] = [
+  { id: 'today', label: 'Today', days: 0 },
+  { id: '7d', label: '7 Days', days: 7 },
+  { id: '30d', label: '30 Days', days: 30 },
+  { id: '90d', label: '3 Months', days: 90 },
+  { id: '180d', label: '6 Months', days: 180 },
+  { id: '365d', label: '1 Year', days: 365 },
+  { id: 'all', label: 'All Time', days: null },
+];
+
+export function timeWindowLabel(window: TimeWindow): string {
+  return TIME_WINDOWS.find(w => w.id === window)?.label ?? 'All Time';
+}
+
+/**
+ * Earliest timestamp (ms) that still counts for a window, or null for All Time.
+ * Today starts at local midnight; the others are rolling, so "7 Days" means the
+ * last 7 x 24 hours counted back from `now`. The boundary itself is inside.
+ */
+export function windowStart(window: TimeWindow, now: number): number | null {
+  const days = TIME_WINDOWS.find(w => w.id === window)?.days;
+  if (days === null || days === undefined) return null;
+  if (days === 0) {
+    const midnight = new Date(now);
+    midnight.setHours(0, 0, 0, 0);
+    return midnight.getTime();
+  }
+  return now - days * DAY_MS;
+}
+
+function inWindow(value: string | null | undefined, window: TimeWindow, now: number): boolean {
+  const start = windowStart(window, now);
+  if (start === null) return true;
+  const t = toTime(value);
+  // no (or unreadable) timestamp: we cannot say it happened in a bounded window
+  return t !== null && t >= start;
+}
+
+/** Missions whose completed_at falls in the window. All Time keeps everything, including missions with no completed_at. */
+export function filterMissionsByWindow(missions: Mission[], window: TimeWindow, now: number): Mission[] {
+  return missions.filter(m => inWindow(m.completed_at, window, now));
+}
+
+/** Focus sessions whose started_at falls in the window. All Time keeps everything. */
+export function filterSessionsByWindow(sessions: FocusSession[], window: TimeWindow, now: number): FocusSession[] {
+  return sessions.filter(s => inWindow(s.started_at, window, now));
+}
+
+/** Copy for the trail when it has no waypoints; the "window" variant only applies when older history exists. */
+export function emptyTrailCopy(window: TimeWindow, hasHistory: boolean): { title: string; body: string } {
+  if (window === 'all' || !hasHistory) {
+    return {
+      title: 'You are at Base Camp',
+      body: 'No missions completed yet. Finish your first one and it becomes waypoint 1 on this trail, with the date and the focus time you put into it.',
+    };
+  }
+  const when = window === 'today' ? 'today' : `in the last ${timeWindowLabel(window).toLowerCase()}`;
+  return {
+    title: 'No missions charted in this window',
+    body: `You have not completed a mission ${when} yet. Launch a session to start this stretch of the trail, or pick a wider horizon to see earlier waypoints.`,
+  };
+}
+
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 export const TRAIL_WIDTH = 1000;
