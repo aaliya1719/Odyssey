@@ -96,7 +96,7 @@ Never put a Gemini API key, Supabase service-role key, or other server-side secr
 
 1. Create a Supabase project.
 2. Configure the environment variables listed above.
-3. Apply the database schema from [`supabase/schema.sql`](supabase/schema.sql).
+3. Apply the database schema from [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor. It is self-contained (tables, row level security policies and the Pause/Complete function) and safe to run again. `supabase/migrations/` is only for upgrading a project that was set up from an older copy of the schema.
 4. Deploy and configure the `suggest-mission` Edge Function using the Supabase CLI.
 5. Store `GEMINI_API_KEY` as a server-side Supabase secret.
 6. Verify the function's authentication and authorization behavior before exposing it to users.
