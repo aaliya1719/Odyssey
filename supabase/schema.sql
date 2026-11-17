@@ -65,6 +65,12 @@ CREATE TABLE IF NOT EXISTS public.focus_sessions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- At most one open (not yet ended) session per mission, so a double click on Start/Resume
+-- or a second tab cannot leave a stray session running.
+CREATE UNIQUE INDEX IF NOT EXISTS focus_sessions_one_open_per_mission
+  ON public.focus_sessions (mission_id)
+  WHERE ended_at IS NULL;
+
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
