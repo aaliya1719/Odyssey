@@ -5,11 +5,13 @@ import type { FocusSession, Mission } from '../types/database';
 import {
   TRAIL_WIDTH,
   buildWaypoints,
+  emptyTrailCopy,
   formatMinutes,
   layoutTrail,
   pathThrough,
+  timeWindowLabel,
 } from '../lib/expeditionTrail';
-import type { Waypoint } from '../lib/expeditionTrail';
+import type { TimeWindow, Waypoint } from '../lib/expeditionTrail';
 import { useTheme } from '../hooks/useTheme';
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -244,23 +246,22 @@ function DetailPanel({
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
-function BaseCampNotice({ className = '', style }: { className?: string; style?: CSSProperties }) {
+function BaseCampNotice({ title, body, cta, className = '', style }: { title: string; body: string; cta: string; className?: string; style?: CSSProperties }) {
   return (
     <div className={`rounded-xl px-5 py-4 ${className}`}
       style={{ backgroundColor: 'var(--color-app-surface-raised)', border: '1px solid var(--color-app-border)', ...style }}>
       <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-app-text)' }}>
-        You are at Base Camp
+        {title}
       </p>
       <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--color-app-text-muted)' }}>
-        No missions completed yet. Finish your first one and it becomes waypoint 1 on this trail,
-        with the date and the focus time you put into it.
+        {body}
       </p>
       <Link
         to="/mission"
         className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg no-underline"
         style={{ color: 'var(--color-app-mission)', border: '1px solid var(--color-app-mission)', backgroundColor: 'var(--color-app-mission-glow)' }}
       >
-        Plan your first mission
+        {cta}
         <span aria-hidden="true">→</span>
       </Link>
     </div>
@@ -269,7 +270,18 @@ function BaseCampNotice({ className = '', style }: { className?: string; style?:
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export default function ExpeditionTrail({ missions, sessions }: { missions: Mission[]; sessions: FocusSession[] }) {
+interface ExpeditionTrailProps {
+  /** Missions to plot. Pass the ones already narrowed to the active time window. */
+  missions: Mission[];
+  /** Sessions used for the per-waypoint focus totals. */
+  sessions: FocusSession[];
+  /** Active time horizon, only used for the empty state and header text. Defaults to All Time. */
+  timeWindow?: TimeWindow;
+  /** True when the user has completed missions outside the active window. */
+  hasHistory?: boolean;
+}
+
+export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all', hasHistory = false }: ExpeditionTrailProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const waypoints = useMemo(() => buildWaypoints(missions, sessions), [missions, sessions]);
@@ -334,9 +346,13 @@ export default function ExpeditionTrail({ missions, sessions }: { missions: Miss
     return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
   }, []);
 
+  const windowed = timeWindow !== 'all' && hasHistory;
+  const empty = emptyTrailCopy(timeWindow, hasHistory);
+  const emptyCta = windowed ? 'Plan a mission' : 'Plan your first mission';
+  const scope = timeWindow === 'all' ? '' : ` · ${timeWindowLabel(timeWindow)}`;
   const telemetry = total === 0
-    ? 'Expedition route · at Base Camp'
-    : `Expedition route · ${total} ${total === 1 ? 'waypoint' : 'waypoints'} · ${formatMinutes(totalMinutes)} focus`;
+    ? `Expedition route${scope} · ${windowed ? 'no waypoints in this window' : 'at Base Camp'}`
+    : `Expedition route${scope} · ${total} ${total === 1 ? 'waypoint' : 'waypoints'} · ${formatMinutes(totalMinutes)} focus`;
 
   return (
     <section
@@ -448,7 +464,7 @@ export default function ExpeditionTrail({ missions, sessions }: { missions: Miss
             </ol>
 
             {total === 0 && (
-              <BaseCampNotice className="absolute" style={{ left: '56%', right: '4%', top: '50%', transform: 'translateY(-50%)' }} />
+              <BaseCampNotice title={empty.title} body={empty.body} cta={emptyCta} className="absolute" style={{ left: '56%', right: '4%', top: '50%', transform: 'translateY(-50%)' }} />
             )}
           </div>
 
@@ -523,7 +539,7 @@ export default function ExpeditionTrail({ missions, sessions }: { missions: Miss
             </li>
           </ol>
 
-          {total === 0 && <BaseCampNotice className="mt-5" />}
+          {total === 0 && <BaseCampNotice title={empty.title} body={empty.body} cta={emptyCta} className="mt-5" />}
         </>
       )}
     </section>
