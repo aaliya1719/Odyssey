@@ -30,78 +30,114 @@ async function getAuthUser() {
   return data?.user ?? null;
 }
 
+/** Ids that already belong to the importing user, per table (lowercase). */
+export interface OwnedIds {
+  tasks: ReadonlySet<string>;
+  missions: ReadonlySet<string>;
+  sessions: ReadonlySet<string>;
+}
+
+export interface PrepareOptions {
+  strategy: RestoreStrategy;
+  /** Merge only: ids the target user already owns, those are kept so the upsert updates them. */
+  ownedIds?: OwnedIds;
+}
+
+/**
+ * Picks the id a row gets in the target account.
+ * - replace: always a fresh id (everything is deleted first, and the file's id may
+ *   still exist under the account that made the backup, which would hit tasks_pkey).
+ * - merge: the file's id only if the target user already owns it (upsert then
+ *   updates their own row). Anything else gets a fresh id, because a row we can't
+ *   see under RLS may belong to someone else and the upsert would be rejected.
+ * A repeated id inside the file is only used once, later copies get a fresh id so
+ * a single upsert never touches the same row twice.
+ */
+function createIdAllocator(opts: PrepareOptions, owned: ReadonlySet<string> | undefined) {
+  const used = new Set<string>();
+  const idMap = new Map<string, string>();
+
+  return {
+    idMap,
+    allocate(oldId: string): string {
+      const key = typeof oldId === 'string' ? oldId.toLowerCase() : '';
+      const reusable =
+        opts.strategy === 'merge' &&
+        UUID_REGEX.test(oldId) &&
+        !!owned?.has(key) &&
+        !used.has(key);
+      const newId = reusable ? oldId : generateUUID();
+      used.add(newId.toLowerCase());
+      // Foreign keys point at the first row that carried this id.
+      if (!idMap.has(key)) idMap.set(key, newId);
+      return newId;
+    },
+  };
+}
+
+function remapRef(ref: string | null, idMap: ReadonlyMap<string, string>): string | null {
+  if (!ref || typeof ref !== 'string') return null;
+  return idMap.get(ref.toLowerCase()) ?? null;
+}
+
 /**
  * Normalizes IDs, foreign keys, and ownership to current user context.
+ * Exported for tests.
  */
-function prepareDataForImport(
+export function prepareDataForImport(
   raw: OdysseyExportData,
   targetUserId: string,
+  opts: PrepareOptions = { strategy: 'replace' },
 ): OdysseyExportData {
-  const taskIdMap = new Map<string, string>();
-  const missionIdMap = new Map<string, string>();
+  const taskIds = createIdAllocator(opts, opts.ownedIds?.tasks);
+  const missionIds = createIdAllocator(opts, opts.ownedIds?.missions);
+  const sessionIds = createIdAllocator(opts, opts.ownedIds?.sessions);
 
-  // 1. Prepare Tasks
-  const tasks: Task[] = raw.tasks.map((t) => {
-    const validId = UUID_REGEX.test(t.id) ? t.id : generateUUID();
-    if (validId !== t.id) {
-      taskIdMap.set(t.id, validId);
-    }
-    return {
-      ...t,
-      id: validId,
-      user_id: targetUserId,
-    };
-  });
+  // 1. Tasks
+  const tasks: Task[] = raw.tasks.map((t) => ({
+    ...t,
+    id: taskIds.allocate(t.id),
+    user_id: targetUserId,
+  }));
 
-  const validTaskIds = new Set(tasks.map((t) => t.id));
+  // 2. Missions (task_id follows the task id map, or becomes null if the task isn't in the file)
+  const missions: Mission[] = raw.missions.map((m) => ({
+    ...m,
+    id: missionIds.allocate(m.id),
+    user_id: targetUserId,
+    task_id: remapRef(m.task_id, taskIds.idMap),
+  }));
 
-  // 2. Prepare Missions
-  const missions: Mission[] = raw.missions.map((m) => {
-    const validId = UUID_REGEX.test(m.id) ? m.id : generateUUID();
-    if (validId !== m.id) {
-      missionIdMap.set(m.id, validId);
-    }
-
-    // Remap task_id if remapped, or nullify if invalid/missing
-    let mappedTaskId: string | null = null;
-    if (m.task_id) {
-      const remapped = taskIdMap.get(m.task_id) ?? m.task_id;
-      if (validTaskIds.has(remapped)) {
-        mappedTaskId = remapped;
-      }
-    }
-
-    return {
-      ...m,
-      id: validId,
-      user_id: targetUserId,
-      task_id: mappedTaskId,
-    };
-  });
-
-  const validMissionIds = new Set(missions.map((m) => m.id));
-
-  // 3. Prepare Sessions
-  const sessions: FocusSession[] = raw.sessions.map((s) => {
-    const validId = UUID_REGEX.test(s.id) ? s.id : generateUUID();
-
-    let mappedMissionId: string | null = null;
-    if (s.mission_id) {
-      const remapped = missionIdMap.get(s.mission_id) ?? s.mission_id;
-      if (validMissionIds.has(remapped)) {
-        mappedMissionId = remapped;
-      }
-    }
-
-    return {
-      ...s,
-      id: validId,
-      user_id: targetUserId,
-      mission_id: mappedMissionId,
-    };
-  });
+  // 3. Sessions (mission_id follows the mission id map)
+  const sessions: FocusSession[] = raw.sessions.map((s) => ({
+    ...s,
+    id: sessionIds.allocate(s.id),
+    user_id: targetUserId,
+    mission_id: remapRef(s.mission_id, missionIds.idMap),
+  }));
 
   return { tasks, missions, sessions };
+}
+
+const OWNED_ID_CHUNK = 100;
+
+/**
+ * Which of the given ids already belong to the signed-in user. RLS hides other
+ * users' rows, so a plain select on the ids only returns the user's own.
+ */
+async function fetchOwnedIds(
+  table: 'tasks' | 'missions' | 'focus_sessions',
+  ids: string[],
+): Promise<Set<string>> {
+  const owned = new Set<string>();
+  const unique = Array.from(new Set(ids.filter((id) => UUID_REGEX.test(id)).map((id) => id.toLowerCase())));
+  for (let i = 0; i < unique.length; i += OWNED_ID_CHUNK) {
+    const chunk = unique.slice(i, i + OWNED_ID_CHUNK);
+    const { data, error } = await supabase.from(table).select('id').in('id', chunk);
+    if (error) throw error;
+    for (const row of (data as { id: string }[] | null) ?? []) owned.add(row.id.toLowerCase());
+  }
+  return owned;
 }
 
 export const portabilityService = {
@@ -185,8 +221,15 @@ export const portabilityService = {
 
     if (!user) {
       // Unauthenticated / Anonymous mode using localStore
-      const prepared = prepareDataForImport(data, 'local-anon');
       const snapshot = localStore.exportAll();
+      const prepared = prepareDataForImport(data, 'local-anon', {
+        strategy,
+        ownedIds: {
+          tasks: new Set(snapshot.tasks.map((t) => t.id.toLowerCase())),
+          missions: new Set(snapshot.missions.map((m) => m.id.toLowerCase())),
+          sessions: new Set(snapshot.sessions.map((x) => x.id.toLowerCase())),
+        },
+      });
 
       try {
         if (strategy === 'replace') {
@@ -223,9 +266,18 @@ export const portabilityService = {
     }
 
     // Authenticated mode using Supabase
-    const prepared = prepareDataForImport(data, user.id);
-
     try {
+      // Merge keeps an id only when the account already owns it, so look that up first.
+      const ownedIds: OwnedIds | undefined =
+        strategy === 'merge'
+          ? {
+              tasks: await fetchOwnedIds('tasks', data.tasks.map((t) => t.id)),
+              missions: await fetchOwnedIds('missions', data.missions.map((m) => m.id)),
+              sessions: await fetchOwnedIds('focus_sessions', data.sessions.map((s) => s.id)),
+            }
+          : undefined;
+      const prepared = prepareDataForImport(data, user.id, { strategy, ownedIds });
+
       if (strategy === 'replace') {
         // 1. Snapshot existing user data before destructive deletion to safeguard against midway failure
         const [tasksSnapRes, missionsSnapRes, sessionsSnapRes] = await Promise.all([

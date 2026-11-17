@@ -398,6 +398,10 @@ describe('portabilityService', () => {
     const upsertedTables: string[] = [];
 
     mockFrom.mockImplementation((table: string) => ({
+      // merge looks up which ids the user already owns before upserting
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
       upsert: vi.fn().mockImplementation(() => {
         upsertedTables.push(table);
         return Promise.resolve({ error: null });
