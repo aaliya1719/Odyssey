@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
+import { focusService } from '../services/focusService';
 import { interpretCapture } from '../services/aiService';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { useVoiceCapture } from '../hooks/useVoiceCapture';
 import { composeDictation, type VoiceResult } from '../lib/voiceCapture';
 import { applyClarification, clarificationKind, skipClarification } from '../lib/clarification';
 import { formatDuration } from '../components/FocusTimer';
+import { formatTaskFocus, taskFocusTotals } from '../lib/taskFocus';
 import { localEndOfDayIso } from '../lib/localDate';
 import type {
   CaptureContext,
@@ -18,7 +20,7 @@ import type {
   EnergyLevel,
   PlanHorizon,
 } from '../lib/odysseyTypes';
-import type { Mission, Task, TaskPriority } from '../types/database';
+import type { FocusSession, Mission, Task, TaskPriority } from '../types/database';
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
 
@@ -785,9 +787,11 @@ function ReviewItemRow({
 // ─── Task row (existing task list — unchanged) ────────────────────────────────
 
 function TaskRow({
-  task, onToggle, onDelete, onLaunchMission,
+  task, focusSummary, onToggle, onDelete, onLaunchMission,
 }: {
   task:            Task;
+  /** e.g. "2 sessions · 50m logged"; null when no focus time has been logged for the task. */
+  focusSummary?:   string | null;
   onToggle:        (t: Task) => void;
   onDelete:        (id: string) => void;
   onLaunchMission: (t: Task) => void;
@@ -850,6 +854,14 @@ function TaskRow({
                 {task.estimated_minutes}m
               </span>
             )}
+            {focusSummary && (
+              <span className="flex items-center gap-1 text-xs font-mono" style={{ color: 'var(--color-app-mission)' }}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+                {focusSummary}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -893,6 +905,7 @@ export default function Home() {
 
   const [tasks,    setTasks]    = useState<Task[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
 
@@ -914,6 +927,12 @@ export default function Home() {
   useEffect(() => { loadTasks(); }, []);
 
   useEffect(() => { loadMissions(); }, [user?.id]);
+
+  useEffect(() => {
+    focusService.getAllSessions()
+      .then(setSessions)
+      .catch(err => console.warn('Failed to load focus sessions for task totals:', err));
+  }, [user?.id]);
 
   useEffect(() => {
     if (!loading && tasks.length > 0 && screen === 'capture') {
@@ -1034,6 +1053,8 @@ export default function Home() {
   const handleLaunchMission = (task: Task) => {
     navigate('/mission', { state: { prefillTask: task } });
   };
+
+  const focusByTask = taskFocusTotals(missions, sessions);
 
   const activeTasks    = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
   const completedTasks = tasks.filter(t => t.status === 'completed');
@@ -1275,7 +1296,7 @@ export default function Home() {
           {activeTasks.length > 0 && (
             <div className="space-y-2 mb-8">
               {activeTasks.map(task => (
-                <TaskRow key={task.id} task={task}
+                <TaskRow key={task.id} task={task} focusSummary={formatTaskFocus(focusByTask.get(task.id))}
                   onToggle={handleToggleComplete}
                   onDelete={handleDeleteTask}
                   onLaunchMission={handleLaunchMission} />
@@ -1294,7 +1315,7 @@ export default function Home() {
               </summary>
               <div className="space-y-2">
                 {completedTasks.map(task => (
-                  <TaskRow key={task.id} task={task}
+                  <TaskRow key={task.id} task={task} focusSummary={formatTaskFocus(focusByTask.get(task.id))}
                     onToggle={handleToggleComplete}
                     onDelete={handleDeleteTask}
                     onLaunchMission={handleLaunchMission} />

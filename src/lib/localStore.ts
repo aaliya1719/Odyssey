@@ -149,6 +149,12 @@ export const localTasks = {
   delete(id: string): void {
     const tasks = load<Task>(KEYS.tasks).filter(t => t.id !== id);
     save(KEYS.tasks, tasks);
+    // Same as the Supabase foreign key (ON DELETE SET NULL): missions keep their
+    // logged sessions but stop pointing at a task that no longer exists.
+    const missions = load<Mission>(KEYS.missions);
+    if (missions.some(m => m.task_id === id)) {
+      save(KEYS.missions, missions.map(m => (m.task_id === id ? { ...m, task_id: null } : m)));
+    }
   },
 
   replaceAll(tasks: Task[]): void {
@@ -221,6 +227,12 @@ export const localMissions = {
   delete(id: string): void {
     const missions = load<Mission>(KEYS.missions).filter(m => m.id !== id);
     save(KEYS.missions, missions);
+    // Same as the Supabase foreign key (ON DELETE SET NULL): sessions stay in the
+    // history but no longer reference a mission that was deleted.
+    const sessions = load<FocusSession>(KEYS.sessions);
+    if (sessions.some(s => s.mission_id === id)) {
+      save(KEYS.sessions, sessions.map(s => (s.mission_id === id ? { ...s, mission_id: null } : s)));
+    }
   },
 
   replaceAll(missions: Mission[]): void {
