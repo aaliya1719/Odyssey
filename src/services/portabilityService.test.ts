@@ -59,6 +59,7 @@ describe('portabilityService', () => {
           id: '550e8400-e29b-41d4-a716-446655440000',
           user_id: 'local-anon',
           title: 'Export Test Task',
+          tags: ['export'],
           description: null,
           status: 'todo',
           priority: 'medium',
@@ -96,6 +97,7 @@ describe('portabilityService', () => {
     expect(exported.summary.mission_count).toBe(1);
     expect(exported.summary.session_count).toBe(0);
     expect(exported.data.tasks[0].title).toBe('Export Test Task');
+    expect(exported.data.tasks[0].tags).toEqual(['export']);
     expect(exported.data.missions[0].title).toBe('Export Test Mission');
   });
 
@@ -127,6 +129,7 @@ describe('portabilityService', () => {
           id: '11111111-1111-4111-a111-111111111111',
           user_id: 'local-anon',
           title: 'Old Task to be replaced',
+          tags: [],
           description: null,
           status: 'todo',
           priority: 'low',
@@ -149,6 +152,7 @@ describe('portabilityService', () => {
           id: '22222222-2222-4222-a222-222222222222',
           user_id: 'other-user',
           title: 'Brand New Restored Task',
+          tags: ['restored'],
           description: null,
           status: 'completed' as const,
           priority: 'urgent' as const,
@@ -174,6 +178,7 @@ describe('portabilityService', () => {
     expect(currentTasks).toHaveLength(1);
     expect(currentTasks[0].title).toBe('Brand New Restored Task');
     expect(currentTasks[0].user_id).toBe('local-anon');
+    expect(currentTasks[0].tags).toEqual(['restored']);
   });
 
   it('safely merges imported data with existing records', async () => {
@@ -183,6 +188,7 @@ describe('portabilityService', () => {
           id: '11111111-1111-4111-a111-111111111111',
           user_id: 'local-anon',
           title: 'Existing Task 1',
+          tags: [],
           description: null,
           status: 'todo',
           priority: 'low',
@@ -205,6 +211,7 @@ describe('portabilityService', () => {
           id: '33333333-3333-4333-a333-333333333333',
           user_id: 'another-user',
           title: 'Merged Task 2',
+          tags: ['merged'],
           description: null,
           status: 'in_progress' as const,
           priority: 'high' as const,
@@ -229,6 +236,7 @@ describe('portabilityService', () => {
     expect(currentTasks).toHaveLength(2);
     expect(currentTasks.map(t => t.title)).toContain('Existing Task 1');
     expect(currentTasks.map(t => t.title)).toContain('Merged Task 2');
+    expect(currentTasks.find(t => t.title === 'Merged Task 2')?.tags).toEqual(['merged']);
   });
 
   it('safely snapshots existing data and rolls back if Supabase replace fails midway', async () => {
@@ -239,6 +247,7 @@ describe('portabilityService', () => {
         id: '11111111-1111-4111-a111-111111111111',
         user_id: 'supabase-user-123',
         title: 'Original Existing Task',
+        tags: [],
         description: null,
         status: 'todo',
         priority: 'high',
@@ -309,6 +318,7 @@ describe('portabilityService', () => {
           id: '99999999-9999-4999-a999-999999999999',
           user_id: 'other-user',
           title: 'New Task That Should Fail Rollback',
+          tags: [],
           description: null,
           status: 'todo' as const,
           priority: 'low' as const,
@@ -371,6 +381,7 @@ describe('portabilityService', () => {
           id: '77777777-7777-4777-a777-777777777777',
           user_id: 'other-user',
           title: 'Restored Supabase Task',
+          tags: ['supabase'],
           description: null,
           status: 'todo' as const,
           priority: 'medium' as const,
@@ -414,6 +425,7 @@ describe('portabilityService', () => {
           id: '55555555-5555-4555-a555-555555555555',
           user_id: 'other-user',
           title: 'Merged Supabase Task',
+          tags: ['supabase'],
           description: null,
           status: 'todo' as const,
           priority: 'high' as const,
@@ -446,6 +458,7 @@ describe('portabilityService', () => {
           id: '11111111-1111-4111-a111-111111111111',
           user_id: 'local-anon',
           title: 'Pre-existing Local Task',
+          tags: [],
           description: null,
           status: 'todo',
           priority: 'low',
@@ -478,6 +491,7 @@ describe('portabilityService', () => {
           id: '22222222-2222-4222-a222-222222222222',
           user_id: 'other',
           title: 'New Failing Task',
+          tags: [],
           description: null,
           status: 'todo' as const,
           priority: 'medium' as const,

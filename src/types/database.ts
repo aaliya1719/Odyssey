@@ -13,6 +13,7 @@ export interface Task {
   id: string;
   user_id: string;
   title: string;
+  tags: string[];
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
@@ -55,6 +56,7 @@ export interface FocusSession {
 /* Helper types for CRUD inputs */
 export interface CreateTaskInput {
   title: string;
+  tags?: string[];
   description?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
@@ -66,6 +68,7 @@ export interface CreateTaskInput {
 
 export interface UpdateTaskInput {
   title?: string;
+  tags?: string[];
   description?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;

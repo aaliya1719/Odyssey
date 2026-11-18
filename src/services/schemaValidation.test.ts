@@ -62,6 +62,20 @@ describe('validateOdysseyBackup', () => {
     expect(result.data?.sessions).toHaveLength(1);
   });
 
+  it('preserves normalized tags and defaults legacy tasks to no tags', () => {
+    const result = validateOdysseyBackup({
+      tasks: [
+        { title: 'Tagged', tags: ['Work', 'work', 'cs101', '#bad', '1'] },
+        { title: 'Legacy task' },
+      ],
+      missions: [],
+      sessions: [],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.data?.tasks.map(task => task.tags)).toEqual([['work', 'cs101'], []]);
+  });
+
   it('rejects non-object root', () => {
     expect(validateOdysseyBackup(null).valid).toBe(false);
     expect(validateOdysseyBackup([]).valid).toBe(false);

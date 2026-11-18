@@ -14,6 +14,7 @@ const task = (over: Partial<Task>): Task =>
     description: null,
     status: 'pending',
     priority: 'medium',
+    tags: [],
     deadline: null,
     estimated_minutes: 30,
     source: null,

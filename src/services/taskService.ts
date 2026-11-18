@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { localTasks } from '../lib/localStore';
+import { normalizeTags } from '../lib/hashtags';
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskStatus } from '../types/database';
 
 /** Returns the current authenticated user, or null if anonymous. */
@@ -17,7 +18,7 @@ export const taskService = {
     if (filter?.status) query = query.eq('status', filter.status);
     const { data, error } = await query;
     if (error) throw error;
-    return (data as Task[]) || [];
+    return ((data as Task[]) || []).map(task => ({ ...task, tags: normalizeTags(task.tags) }));
   },
 
   async createTask(input: CreateTaskInput): Promise<Task> {
@@ -29,6 +30,7 @@ export const taskService = {
       .insert({
         user_id:           user.id,
         title:             input.title,
+        tags:              normalizeTags(input.tags),
         description:       input.description ?? null,
         status:            input.status ?? 'todo',
         priority:          input.priority ?? 'medium',
@@ -49,7 +51,7 @@ export const taskService = {
 
     const { data, error } = await supabase
       .from('tasks')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updates, ...(updates.tags ? { tags: normalizeTags(updates.tags) } : {}), updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();

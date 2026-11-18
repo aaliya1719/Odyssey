@@ -5,6 +5,10 @@ import schemaSql from '../../supabase/schema.sql?raw';
 // so it has to be complete and safe to run twice. These are text checks only; they
 // do not execute the SQL.
 describe('supabase/schema.sql', () => {
+  it('defines task tags as a non-null text array with an empty default', () => {
+    expect(schemaSql).toMatch(/tags TEXT\[\] NOT NULL DEFAULT '\{\}'/);
+  });
+
   it('defines the transition_mission_timer function that Pause/Complete call, and grants it', () => {
     expect(schemaSql).toMatch(/CREATE OR REPLACE FUNCTION public\.transition_mission_timer\(/);
     expect(schemaSql).toMatch(/GRANT EXECUTE ON FUNCTION public\.transition_mission_timer\(UUID, UUID, TEXT\) TO authenticated;/);

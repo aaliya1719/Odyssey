@@ -1,6 +1,7 @@
 import { isValidMissionDuration } from '../lib/missionDuration';
 import type { Task, Mission, FocusSession, TaskStatus, TaskPriority, MissionStatus } from '../types/database';
 import type { OdysseyExportData, ValidationError, ValidationResult } from '../types/portability';
+import { normalizeTags } from '../lib/hashtags';
 
 const VALID_TASK_STATUSES: Set<TaskStatus> = new Set([
   'backlog',
@@ -171,6 +172,7 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : generateUUID(),
       user_id: typeof item.user_id === 'string' ? item.user_id : 'local-anon',
       title: typeof item.title === 'string' ? item.title.trim() : '',
+      tags: normalizeTags(item.tags),
       description: typeof item.description === 'string' ? item.description : null,
       status: (item.status && VALID_TASK_STATUSES.has(item.status as TaskStatus)) ? (item.status as TaskStatus) : 'todo',
       priority: (item.priority && VALID_TASK_PRIORITIES.has(item.priority as TaskPriority)) ? (item.priority as TaskPriority) : 'medium',
