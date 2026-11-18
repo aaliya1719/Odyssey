@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { missionService } from '../services/missionService';
 import { taskService } from '../services/taskService';
@@ -8,6 +8,12 @@ import { safeMissionDuration } from '../lib/missionDuration';
 import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction } from '../lib/keyboardShortcuts';
 import FinishSessionDialog from '../components/FinishSessionDialog';
 import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
+import {
+  createSoundscapeController,
+  persistSoundscapeVolume,
+  readSoundscapeVolume,
+  type SoundscapeType,
+} from '../lib/soundscape';
 import type { TaskOutcome } from '../lib/taskFocus';
 import type { Mission, Task } from '../types/database';
 
@@ -60,6 +66,18 @@ export default function Execute() {
 
   const timer = useMissionTimer(mission, updatedMission => setMission(updatedMission));
   const { elapsed, running, ending } = timer;
+  const [soundscape, setSoundscape] = useState<SoundscapeType>('off');
+  const [soundscapeVolume, setSoundscapeVolume] = useState(readSoundscapeVolume);
+  const soundscapeControllerRef = useRef<ReturnType<typeof createSoundscapeController> | null>(null);
+
+  useEffect(() => {
+    const controller = createSoundscapeController();
+    soundscapeControllerRef.current = controller;
+    return () => {
+      controller.destroy();
+      if (soundscapeControllerRef.current === controller) soundscapeControllerRef.current = null;
+    };
+  }, []);
 
   // Next recommendation state for post-completion flow
   const [nextRecommendation, setNextRecommendation] = useState<{
@@ -121,9 +139,21 @@ export default function Execute() {
   };
 
   // ── Timer actions ──────────────────────────────────────────────────────────────
-  const handleStart = async () => { try { await timer.start(); } catch (e) { console.error(e); } };
-  const handlePause = async () => { try { await timer.pause(); } catch (e) { console.error(e); } };
-  const handleResume = async () => { try { await timer.resume(); } catch (e) { console.error(e); } };
+  const startSoundscape = async () => {
+    const controller = soundscapeControllerRef.current;
+    if (!controller) return;
+    try { await controller.play(soundscape); } catch (error) { console.warn('Soundscape unavailable:', error); }
+  };
+  const stopSoundscape = () => soundscapeControllerRef.current?.fadeOut();
+  const handleStart = async () => {
+    try { await timer.start(); await startSoundscape(); } catch (e) { console.error(e); }
+  };
+  const handlePause = async () => {
+    try { await timer.pause(); stopSoundscape(); } catch (e) { console.error(e); }
+  };
+  const handleResume = async () => {
+    try { await timer.resume(); await startSoundscape(); } catch (e) { console.error(e); }
+  };
 
   // Finishing a mission always logs the session. The parent task is only closed when the user
   // picked "Mark task completed", so a task can span several missions.
@@ -131,6 +161,7 @@ export default function Execute() {
     if (!mission || ending) return;
     try {
       await timer.complete();
+      stopSoundscape();
       const m = await missionService.getMission(mission.id);
       const taskId = resolveLinkedTaskId(linkedTask?.id, m.task_id);
       const closeId = taskIdToComplete(outcome, taskId);
@@ -193,6 +224,23 @@ export default function Execute() {
   }, [mission, isFinished, ending, shortcutsOpen, finishConfirmationOpen, running, isPaused]);
 
   const xpReward = XP_PER_MISSION + (taskClosed ? XP_PER_TASK : 0);
+
+  const handleSoundscapeChange = async (next: SoundscapeType) => {
+    setSoundscape(next);
+    if (next === 'off' || !running) {
+      stopSoundscape();
+      return;
+    }
+    const controller = soundscapeControllerRef.current;
+    if (!controller) return;
+    try { await controller.play(next); } catch (error) { console.warn('Soundscape unavailable:', error); }
+  };
+
+  const handleSoundscapeVolume = (value: number) => {
+    const next = persistSoundscapeVolume(value);
+    setSoundscapeVolume(next);
+    soundscapeControllerRef.current?.setVolume(next);
+  };
 
   // circumference for SVG ring (r=88)
   const RING_R = 88;
@@ -527,6 +575,41 @@ export default function Execute() {
               </div>
 
               {/* Controls */}
+              <div className="w-full rounded-lg px-3.5 py-3" style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 5%, transparent)', border: '1px solid var(--color-app-border)' }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="text-xs font-semibold" htmlFor="soundscape-select" style={{ color: 'var(--color-app-text-muted)' }}>
+                    Focus soundscape
+                  </label>
+                  <select
+                    id="soundscape-select"
+                    value={soundscape}
+                    onChange={event => { void handleSoundscapeChange(event.target.value as SoundscapeType); }}
+                    className="rounded-md px-2 py-1.5 text-xs border"
+                    style={{ color: 'var(--color-app-text)', backgroundColor: 'var(--color-app-surface)', borderColor: 'var(--color-app-border)' }}
+                  >
+                    <option value="off">Off</option>
+                    <option value="brown">Brown Noise</option>
+                    <option value="rain">Gentle Rain</option>
+                  </select>
+                </div>
+                <label className="flex items-center gap-3 mt-2 text-xs" htmlFor="soundscape-volume" style={{ color: 'var(--color-app-text-muted)' }}>
+                  Volume
+                  <input
+                    id="soundscape-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={Math.round(soundscapeVolume * 100)}
+                    onChange={event => handleSoundscapeVolume(Number(event.target.value) / 100)}
+                    disabled={soundscape === 'off'}
+                    className="flex-1 accent-[var(--color-app-mission)]"
+                    aria-label="Soundscape volume"
+                  />
+                  <span className="w-8 text-right font-mono">{Math.round(soundscapeVolume * 100)}%</span>
+                </label>
+              </div>
+
               <div className="flex items-center gap-3 w-full">
                 {!running && !isPaused ? (
                   <button
