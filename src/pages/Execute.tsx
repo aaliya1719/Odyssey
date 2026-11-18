@@ -5,7 +5,8 @@ import { taskService } from '../services/taskService';
 import { formatDuration } from '../components/FocusTimer';
 import { useMissionTimer } from '../hooks/useMissionTimer';
 import { safeMissionDuration } from '../lib/missionDuration';
-import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction } from '../lib/keyboardShortcuts';
+import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction, zenModeShortcutAction } from '../lib/keyboardShortcuts';
+import { createZenModeController } from '../lib/zenMode';
 import FinishSessionDialog from '../components/FinishSessionDialog';
 import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
 import {
@@ -32,6 +33,18 @@ export default function Execute() {
   const linkedTask      = (location.state as { mission?: Mission; linkedTask?: Task } | null)?.linkedTask ?? null;
 
   const [mission, setMission] = useState<Mission | null>(initialMission);
+  const [zenMode, setZenMode] = useState(false);
+  const zenControllerRef = useRef<ReturnType<typeof createZenModeController> | null>(null);
+
+  useEffect(() => {
+    const controller = createZenModeController(document, setZenMode);
+    zenControllerRef.current = controller;
+    controller.attach();
+    return () => {
+      zenControllerRef.current = null;
+      void controller.cleanup();
+    };
+  }, []);
 
   // The task this mission belongs to. It arrives in router state when launched from a task,
   // otherwise (a restored mission, say) it is looked up by the mission's task_id.
@@ -192,6 +205,44 @@ export default function Execute() {
   const isPaused     = mission?.status === 'paused';
   const isAbandoned  = mission?.status === 'abandoned';
   const isFinished   = isCompleted || isAbandoned;
+
+  useEffect(() => {
+    if (isFinished && zenMode) void zenControllerRef.current?.exit();
+  }, [isFinished, zenMode]);
+
+  const toggleZenMode = () => {
+    const controller = zenControllerRef.current;
+    if (!controller) return;
+    if (zenMode) void controller.exit();
+    else void controller.enter();
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!mission || isFinished) return;
+      const dialogOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+      if (zenMode && event.key === 'Escape' && !dialogOpen) {
+        event.preventDefault();
+        void zenControllerRef.current?.exit();
+        return;
+      }
+
+      const action = zenModeShortcutAction(
+        event.key,
+        event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || dialogOpen,
+        isTypingShortcutTarget(event.target),
+        isEditableShortcutTarget(event.target),
+      );
+      if (action !== 'toggleZen') return;
+      event.preventDefault();
+      if (zenMode) void zenControllerRef.current?.exit();
+      else void zenControllerRef.current?.enter();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isFinished, mission, zenMode]);
+
   const runTimerShortcut = useEffectEvent((action: 'pause' | 'resume') => {
     if (action === 'pause') void handlePause();
     else void handleResume();
@@ -295,10 +346,10 @@ export default function Execute() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-0 sm:px-4">
+    <div className={`zen-mode-page max-w-2xl mx-auto px-0 sm:px-4${zenMode ? ' is-zen-mode' : ''}`}>
 
       {/* ── Flow breadcrumb ── */}
-      <nav className="flex items-center gap-2 mb-6 text-xs px-4 sm:px-0" style={{ color: 'var(--color-app-text-dim)' }}>
+      <nav className="zen-breadcrumb flex items-center gap-2 mb-6 text-xs px-4 sm:px-0" style={{ color: 'var(--color-app-text-dim)' }}>
         <Link to="/home" className="hover:underline"
           style={{ color: 'var(--color-app-text-dim)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-app-text-muted)')}
@@ -352,12 +403,34 @@ export default function Execute() {
               {running ? 'MISSION IN PROGRESS' : isCompleted ? 'MISSION COMPLETE' : isPaused ? 'SYSTEMS PAUSED' : isAbandoned ? 'MISSION ABORTED' : 'READY FOR LAUNCH'}
             </span>
           </div>
-          <span
-            className="text-[0.6rem] font-mono"
-            style={{ color: 'var(--color-app-text-dim)' }}
-          >
-            {Math.round(progress * 100)}% elapsed
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className="text-[0.6rem] font-mono"
+              style={{ color: 'var(--color-app-text-dim)' }}
+            >
+              {Math.round(progress * 100)}% elapsed
+            </span>
+            <button
+              type="button"
+              onClick={toggleZenMode}
+              disabled={isFinished}
+              aria-label={zenMode ? 'Exit Zen Mode' : 'Enter Zen Mode'}
+              aria-pressed={zenMode}
+              title={zenMode ? 'Exit Zen Mode (Esc)' : 'Enter Zen Mode (F)'}
+              className="zen-mode-toggle inline-flex items-center justify-center rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ color: 'var(--color-app-text-muted)', backgroundColor: 'transparent' }}
+            >
+              {zenMode ? (
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5H4.5V9M15 19.5h4.5V15M4.5 9l5-5M19.5 15l-5 5" />
+                </svg>
+              ) : (
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 9V4.5H9M19.5 15v4.5H15M4.5 4.5l5 5M19.5 19.5l-5-5" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ── Mission identity ── */}
@@ -501,7 +574,7 @@ export default function Execute() {
               </div>
 
               {/* Horizontal mission trajectory bar */}
-              <div className="w-full">
+              <div className="zen-secondary-panel w-full">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[0.6rem] font-mono uppercase tracking-wider"
                     style={{ color: 'var(--color-app-text-dim)' }}>
@@ -550,7 +623,7 @@ export default function Execute() {
               </div>
 
               {/* Telemetry row: elapsed + XP reward */}
-              <div className="w-full flex items-center justify-between pt-1 border-t"
+              <div className="zen-secondary-panel w-full flex items-center justify-between pt-1 border-t"
                 style={{ borderColor: 'rgba(49,75,115,0.2)' }}>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[0.6rem] font-mono uppercase tracking-wider"
@@ -575,7 +648,7 @@ export default function Execute() {
               </div>
 
               {/* Controls */}
-              <div className="w-full rounded-lg px-3.5 py-3" style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 5%, transparent)', border: '1px solid var(--color-app-border)' }}>
+              <div className="zen-secondary-panel w-full rounded-lg px-3.5 py-3" style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 5%, transparent)', border: '1px solid var(--color-app-border)' }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <label className="text-xs font-semibold" htmlFor="soundscape-select" style={{ color: 'var(--color-app-text-muted)' }}>
                     Focus soundscape
@@ -692,7 +765,7 @@ export default function Execute() {
         {/* ── Post-completion Next Move Recommendation ── */}
         {isCompleted && (
           <div
-            className="mx-5 mb-5 rounded-xl p-5 app-spotlight"
+            className="zen-secondary-panel mx-5 mb-5 rounded-xl p-5 app-spotlight"
             style={{
               border: '1px solid color-mix(in srgb, var(--color-app-mission) 40%, transparent)',
               boxShadow: '0 8px 32px -4px rgba(3,6,13,0.6)',

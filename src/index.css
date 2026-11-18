@@ -720,6 +720,56 @@ body.app-mode {
 .focus-pulse  { animation: focus-pulse 2s ease-in-out infinite; }
 .timer-blink  { animation: timer-tick 1s step-end infinite; }
 
+/* Execute Zen Mode keeps the console usable when native fullscreen is unavailable. */
+html.zen-mode {
+  overflow: hidden;
+}
+
+html.zen-mode .app-navigation,
+html.zen-mode footer,
+html.zen-mode .atmospheric-background {
+  display: none;
+}
+
+html.zen-mode .zen-mode-page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: clamp(1rem, 4vw, 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-app-bg);
+}
+
+html.zen-mode .zen-mode-page > .app-console {
+  width: min(100%, 56rem);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+html.zen-mode .zen-breadcrumb,
+html.zen-mode .zen-secondary-panel {
+  display: none;
+}
+
+html.zen-mode .zen-mode-toggle {
+  color: var(--color-app-mission);
+}
+
+@keyframes zen-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-app-mission) 16%, transparent); }
+  50% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--color-app-mission) 0%, transparent); }
+}
+
+html.zen-mode .zen-mode-page > .app-console {
+  animation: zen-breathe 4s ease-in-out infinite;
+}
+
 /* ─── App surface utilities ────────────────────────────────────── */
 .app-card {
   background-color: var(--color-app-surface);

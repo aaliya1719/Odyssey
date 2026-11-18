@@ -24,6 +24,16 @@ export function isEditableShortcutTarget(target: EventTarget | null): boolean {
   return isTypingShortcutTarget(target) || (target instanceof Element && Boolean(target.closest('button, a, [role="button"]')));
 }
 
+export function zenModeShortcutAction(
+  key: string,
+  blocked: boolean,
+  typing: boolean,
+  interactive: boolean,
+): 'toggleZen' | null {
+  if (blocked || typing || interactive) return null;
+  return key.toLowerCase() === 'f' ? 'toggleZen' : null;
+}
+
 export function timerShortcutAction(
   key: string,
   code: string,

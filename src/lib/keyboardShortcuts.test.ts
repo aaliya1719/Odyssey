@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { globalShortcutAction, timerShortcutAction } from './keyboardShortcuts';
+import { globalShortcutAction, timerShortcutAction, zenModeShortcutAction } from './keyboardShortcuts';
 
 describe('keyboard shortcut actions', () => {
   it('maps primary navigation and the help key', () => {
@@ -18,5 +18,14 @@ describe('keyboard shortcut actions', () => {
     expect(timerShortcutAction(' ', 'Space', 'running', false, true, true)).toBeNull();
     expect(timerShortcutAction(' ', 'Space', 'running', false, false, true)).toBeNull();
     expect(timerShortcutAction('Escape', 'Escape', 'running', true, false, false)).toBeNull();
+  });
+
+  it('toggles Zen Mode only for an unmodified F key outside controls', () => {
+    expect(zenModeShortcutAction('f', false, false, false)).toBe('toggleZen');
+    expect(zenModeShortcutAction('F', false, false, false)).toBe('toggleZen');
+    expect(zenModeShortcutAction('f', true, false, false)).toBeNull();
+    expect(zenModeShortcutAction('f', false, true, false)).toBeNull();
+    expect(zenModeShortcutAction('f', false, false, true)).toBeNull();
+    expect(zenModeShortcutAction(' ', false, false, false)).toBeNull();
   });
 });
