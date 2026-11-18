@@ -110,7 +110,7 @@ const S2 = '33333333-3333-4333-8333-222222222222';
 const now = '2026-11-17T10:00:00.000Z';
 
 const task = (id: string, title = 't', user_id = 'user-a'): Task => ({
-  id, user_id, title, description: null, status: 'todo', priority: 'medium', deadline: null,
+  id, user_id, title, tags: [], description: null, status: 'todo', priority: 'medium', deadline: null,
   estimated_minutes: null, source: null, source_id: null, created_at: now, updated_at: now, completed_at: null,
 });
 const mission = (id: string, task_id: string | null, title = 'm', user_id = 'user-a'): Mission => ({

@@ -24,6 +24,7 @@ import type {
 } from '../types/database';
 import type { CreateMissionInput, UpdateMissionInput } from '../services/missionService';
 import { isValidMissionDuration } from './missionDuration';
+import { normalizeTags } from './hashtags';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,11 +99,15 @@ const KEYS = {
   sessions: 'ody_focus_sessions',
 } as const;
 
+function normalizeTask(task: Task): Task {
+  return { ...task, tags: normalizeTags((task as Task & { tags?: unknown }).tags) };
+}
+
 // ─── Task operations ──────────────────────────────────────────────────────────
 
 export const localTasks = {
   getAll(filter?: { status?: TaskStatus }): Task[] {
-    const tasks = load<Task>(KEYS.tasks);
+    const tasks = load<Task>(KEYS.tasks).map(normalizeTask);
     if (filter?.status) return tasks.filter(t => t.status === filter.status);
     return tasks.sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
@@ -112,6 +117,7 @@ export const localTasks = {
       id:                uuid(),
       user_id:           ANON_USER_ID,
       title:             input.title,
+      tags:              normalizeTags(input.tags),
       description:       input.description ?? null,
       status:            (input.status ?? 'todo') as TaskStatus,
       priority:          (input.priority ?? 'medium') as TaskPriority,
@@ -123,17 +129,17 @@ export const localTasks = {
       updated_at:        now(),
       completed_at:      null,
     };
-    const tasks = load<Task>(KEYS.tasks);
+    const tasks = load<Task>(KEYS.tasks).map(normalizeTask);
     tasks.unshift(task);
     save(KEYS.tasks, tasks);
     return task;
   },
 
   update(id: string, updates: UpdateTaskInput): Task {
-    const tasks = load<Task>(KEYS.tasks);
+    const tasks = load<Task>(KEYS.tasks).map(normalizeTask);
     const idx = tasks.findIndex(t => t.id === id);
     if (idx === -1) throw new Error(`Task ${id} not found`);
-    const updated: Task = { ...tasks[idx], ...updates, updated_at: now() };
+    const updated: Task = normalizeTask({ ...tasks[idx], ...updates, updated_at: now() });
     tasks[idx] = updated;
     save(KEYS.tasks, tasks);
     return updated;
@@ -158,14 +164,14 @@ export const localTasks = {
   },
 
   replaceAll(tasks: Task[]): void {
-    save(KEYS.tasks, tasks);
+    save(KEYS.tasks, tasks.map(normalizeTask));
   },
 
   merge(tasks: Task[]): void {
-    const existing = load<Task>(KEYS.tasks);
+    const existing = load<Task>(KEYS.tasks).map(normalizeTask);
     const map = new Map(existing.map(t => [t.id, t]));
     for (const t of tasks) {
-      map.set(t.id, t);
+      map.set(t.id, normalizeTask(t));
     }
     const merged = Array.from(map.values()).sort((a, b) => b.created_at.localeCompare(a.created_at));
     save(KEYS.tasks, merged);

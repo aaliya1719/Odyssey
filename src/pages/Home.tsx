@@ -12,6 +12,7 @@ import { applyClarification, clarificationKind, skipClarification } from '../lib
 import { formatDuration } from '../components/FocusTimer';
 import { formatTaskFocus, taskFocusTotals } from '../lib/taskFocus';
 import { localEndOfDayIso } from '../lib/localDate';
+import { extractHashtags, normalizeTags } from '../lib/hashtags';
 import type {
   CaptureContext,
   AIInterpretation,
@@ -784,10 +785,10 @@ function ReviewItemRow({
   );
 }
 
-// ─── Task row (existing task list — unchanged) ────────────────────────────────
+// ─── Task row ─────────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, focusSummary, onToggle, onDelete, onLaunchMission,
+  task, focusSummary, onToggle, onDelete, onLaunchMission, onTagClick,
 }: {
   task:            Task;
   /** e.g. "2 sessions · 50m logged"; null when no focus time has been logged for the task. */
@@ -795,6 +796,7 @@ function TaskRow({
   onToggle:        (t: Task) => void;
   onDelete:        (id: string) => void;
   onLaunchMission: (t: Task) => void;
+  onTagClick:      (tag: string) => void;
 }) {
   const isCompleted = task.status === 'completed';
   const pc = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.medium;
@@ -833,6 +835,22 @@ function TaskRow({
             >
               {task.priority}
             </span>
+            {task.tags.map(tag => (
+              <button
+                key={tag}
+                type="button"
+                onClick={event => { event.stopPropagation(); onTagClick(tag); }}
+                className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded cursor-pointer border transition-colors"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--color-app-gold) 10%, transparent)',
+                  color: 'var(--color-app-gold)',
+                  borderColor: 'color-mix(in srgb, var(--color-app-gold) 25%, transparent)',
+                }}
+                aria-label={`Filter by #${tag}`}
+              >
+                #{tag}
+              </button>
+            ))}
           </div>
           {task.description && (
             <p className="text-xs line-clamp-1 mt-0.5" style={{ color: 'var(--color-app-text-muted)' }}>{task.description}</p>
@@ -923,6 +941,7 @@ export default function Home() {
   const [estimatedMinutes, setEstimatedMinutes] = useState('');
   const [isCreating,       setIsCreating]       = useState(false);
   const [formError,        setFormError]        = useState<string | null>(null);
+  const [activeTag,        setActiveTag]        = useState<string | null>(null);
 
   useEffect(() => { loadTasks(); }, []);
 
@@ -940,6 +959,10 @@ export default function Home() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  useEffect(() => {
+    if (activeTag && !tasks.some(task => task.tags.includes(activeTag))) setActiveTag(null);
+  }, [activeTag, tasks]);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -980,16 +1003,20 @@ export default function Home() {
 
   const handleConfirmAndPlan = async (items: AIItem[]) => {
     if (!captureCtx) return;
+    const captureTags = extractHashtags(captureCtx.rawInput).tags;
+    const sharedTags = items.length === 1 ? captureTags : [];
     // Save tasks
     const created = await Promise.all(
-      items.map(item =>
-        taskService.createTask({
-          title:    item.text,
+      items.map(item => {
+        const parsed = extractHashtags(item.text);
+        return taskService.createTask({
+          title:    parsed.cleanText,
+          tags:     normalizeTags([...parsed.tags, ...sharedTags]),
           priority: item.priority as TaskPriority,
           deadline: item.isoDeadline ?? null,
           status:   'todo',
-        })
-      )
+        });
+      })
     );
     setTasks(prev => [...created, ...prev]);
     setScreen('capture');
@@ -1011,9 +1038,16 @@ export default function Home() {
     setIsCreating(true);
     setFormError(null);
     try {
+      const parsedTitle = extractHashtags(title);
+      const parsedDescription = extractHashtags(description);
+      if (!parsedTitle.cleanText) {
+        setFormError('Add a title after removing the hashtag.');
+        return;
+      }
       const newTask = await taskService.createTask({
-        title:             title.trim(),
-        description:       description.trim() || undefined,
+        title:             parsedTitle.cleanText,
+        tags:              normalizeTags([...parsedTitle.tags, ...parsedDescription.tags]),
+        description:       parsedDescription.cleanText || undefined,
         deadline:          localEndOfDayIso(deadline),
         priority,
         estimated_minutes: estimatedMinutes ? parseInt(estimatedMinutes, 10) : undefined,
@@ -1056,8 +1090,10 @@ export default function Home() {
 
   const focusByTask = taskFocusTotals(missions, sessions);
 
-  const activeTasks    = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const availableTags = Array.from(new Set(tasks.flatMap(task => task.tags))).sort();
+  const visibleTasks = activeTag ? tasks.filter(task => task.tags.includes(activeTag)) : tasks;
+  const activeTasks    = visibleTasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
+  const completedTasks = visibleTasks.filter(t => t.status === 'completed');
   const resumableMission = missions.find(m => m.status === 'active' || m.status === 'paused') ?? null;
   const missionTimer = useMissionTimer(resumableMission, updatedMission => {
     setMissions(previous => previous.map(m => m.id === updatedMission.id ? updatedMission : m));
@@ -1198,6 +1234,40 @@ export default function Home() {
         </div>
       )}
 
+      {tasks.length > 0 && availableTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-5" aria-label="Filter tasks by tag">
+          <span className="text-[0.65rem] font-semibold uppercase tracking-wider mr-1"
+            style={{ color: 'var(--color-app-text-dim)' }}>Tags</span>
+          <button
+            type="button"
+            onClick={() => setActiveTag(null)}
+            className="text-[0.65rem] font-semibold px-2 py-1 rounded cursor-pointer border"
+            style={{
+              backgroundColor: activeTag === null ? 'color-mix(in srgb, var(--color-app-mission) 14%, transparent)' : 'transparent',
+              color: activeTag === null ? 'var(--color-app-mission)' : 'var(--color-app-text-dim)',
+              borderColor: activeTag === null ? 'color-mix(in srgb, var(--color-app-mission) 35%, transparent)' : 'var(--color-app-border)',
+            }}
+          >
+            All
+          </button>
+          {availableTags.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              className="text-[0.65rem] font-semibold px-2 py-1 rounded cursor-pointer border"
+              style={{
+                backgroundColor: activeTag === tag ? 'color-mix(in srgb, var(--color-app-gold) 14%, transparent)' : 'transparent',
+                color: activeTag === tag ? 'var(--color-app-gold)' : 'var(--color-app-text-dim)',
+                borderColor: activeTag === tag ? 'color-mix(in srgb, var(--color-app-gold) 35%, transparent)' : 'var(--color-app-border)',
+              }}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Manual task form */}
       {isFormOpen && (
         <div className="rounded-xl p-5 mb-5"
@@ -1293,13 +1363,29 @@ export default function Home() {
         </div>
       ) : tasks.length === 0 ? null : (
         <>
+          {activeTasks.length === 0 && completedTasks.length === 0 && (
+            <div className="rounded-xl px-5 py-6 text-center"
+              style={{ background: 'rgba(8,19,33,0.5)', border: '1px dashed rgba(30,60,100,0.4)' }}>
+              <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
+                No tasks match {activeTag ? `#${activeTag}` : 'this filter'}.
+              </p>
+              {activeTag && (
+                <button type="button" onClick={() => setActiveTag(null)}
+                  className="mt-2 text-xs cursor-pointer border-none bg-transparent"
+                  style={{ color: 'var(--color-app-mission)' }}>
+                  Clear tag filter
+                </button>
+              )}
+            </div>
+          )}
           {activeTasks.length > 0 && (
             <div className="space-y-2 mb-8">
               {activeTasks.map(task => (
                 <TaskRow key={task.id} task={task} focusSummary={formatTaskFocus(focusByTask.get(task.id))}
                   onToggle={handleToggleComplete}
                   onDelete={handleDeleteTask}
-                  onLaunchMission={handleLaunchMission} />
+                  onLaunchMission={handleLaunchMission}
+                  onTagClick={setActiveTag} />
               ))}
             </div>
           )}
@@ -1318,7 +1404,8 @@ export default function Home() {
                   <TaskRow key={task.id} task={task} focusSummary={formatTaskFocus(focusByTask.get(task.id))}
                     onToggle={handleToggleComplete}
                     onDelete={handleDeleteTask}
-                    onLaunchMission={handleLaunchMission} />
+                    onLaunchMission={handleLaunchMission}
+                    onTagClick={setActiveTag} />
                 ))}
               </div>
             </details>
