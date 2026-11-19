@@ -501,6 +501,17 @@ body,
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+html[data-theme-initializing] body,
+html[data-theme-initializing] .app-navigation,
+html[data-theme-initializing] .app-card,
+html[data-theme-initializing] .app-card-raised,
+html[data-theme-initializing] .app-panel-deep,
+html[data-theme-initializing] .app-panel-inset,
+html[data-theme-initializing] .app-spotlight,
+html[data-theme-initializing] .app-spotlight-strong {
+  transition: none !important;
+}
+
 /* ─── Box-sizing ───────────────────────────────────────────────── */
 *,
 *::before,

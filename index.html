@@ -9,6 +9,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" />
+    <script data-theme-init>
+      (() => {
+        const storageKey = 'odyssey-theme';
+        let storedTheme = null;
+        let systemTheme = 'dark';
+
+        try {
+          storedTheme = window.localStorage.getItem(storageKey);
+        } catch {
+          // Storage can be unavailable in privacy-restricted contexts.
+        }
+
+        try {
+          systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch {
+          // Keep the existing dark fallback when matchMedia is unavailable.
+        }
+
+        const savedTheme = storedTheme === 'light' || storedTheme === 'dark'
+          ? storedTheme
+          : null;
+        document.documentElement.dataset.theme = savedTheme ?? systemTheme;
+        document.documentElement.dataset.themeInitializing = 'true';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
