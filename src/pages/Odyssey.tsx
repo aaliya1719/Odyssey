@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
+import ExpeditionProgress from '../components/ExpeditionProgress';
+import { useProgression } from '../hooks/useProgression';
 import DataPortabilitySection from '../components/DataPortabilitySection';
 import type { Task, Mission, FocusSession } from '../types/database';
 
@@ -128,6 +130,7 @@ export default function Odyssey() {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { progress, configureRestDays } = useProgression({ tasks, missions, sessions });
 
   useEffect(() => { load(); }, []);
 
@@ -191,7 +194,7 @@ export default function Odyssey() {
         className="rounded-xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center gap-5"
         style={{
           background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-app-gold) 8%, transparent) 0%, color-mix(in srgb, var(--color-app-mission) 6%, transparent) 100%)',
-          border: '1px solid color-mix(in srgb, var(--color-app-gold) 20%, transparent)',
+          border: `1px solid ${progress.rank.accent}`,
         }}
       >
         {/* Avatar */}
@@ -227,6 +230,8 @@ export default function Odyssey() {
           </span>
         </div>
       </div>
+
+      <ExpeditionProgress progress={progress} name={displayName} configureRestDays={configureRestDays} />
 
       {/* Summary bar */}
       <div className="grid grid-cols-3 gap-3 mb-8">

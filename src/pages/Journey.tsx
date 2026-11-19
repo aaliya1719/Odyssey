@@ -3,6 +3,8 @@ import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
 import { focusService } from '../services/focusService';
 import type { Task, Mission, FocusSession } from '../types/database';
+import { useProgression } from '../hooks/useProgression';
+import { RankBadge } from '../components/ExpeditionProgress';
 import ExpeditionTrail from '../components/ExpeditionTrail';
 import {
   DEFAULT_TIME_WINDOW,
@@ -14,8 +16,8 @@ import {
 } from '../lib/expeditionTrail';
 import type { TimeWindow } from '../lib/expeditionTrail';
 
-// Rank and checkpoint thresholds. These only feed the rank badge and the
-// checkpoint list in the Mission Log; the map itself is built from real missions.
+// Mission Log checkpoints remain independent of the new XP rank bands; the map
+// itself is built from real missions.
 interface Checkpoint {
   id: string;
   label: string;
@@ -39,6 +41,7 @@ export default function Journey() {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { progress } = useProgression({ tasks, missions, sessions });
 
   const [timeWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
   // "now" for the window edges; refreshed on load and whenever a horizon is picked
@@ -50,6 +53,7 @@ export default function Journey() {
 
   const load = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [t, m, s] = await Promise.all([
         taskService.getTasks(),
@@ -72,10 +76,7 @@ export default function Journey() {
   const completedTasks = useMemo(() => tasks.filter(t => t.status === 'completed'), [tasks]);
   const completedMissions = useMemo(() => missions.filter(m => m.status === 'completed'), [missions]);
   const totalFocusMinutes = useMemo(() => sessions.reduce((a, s) => a + (s.duration_minutes ?? 0), 0), [sessions]);
-  const totalXp = useMemo(
-    () => completedTasks.length * 50 + completedMissions.length * 250 + totalFocusMinutes * 10,
-    [completedTasks.length, completedMissions.length, totalFocusMinutes],
-  );
+  const totalXp = progress.xp;
 
   // Everything the trail and the quick stats show is narrowed to the chosen horizon.
   // The rank, XP and Mission Log drawer stay lifetime on purpose.
@@ -92,14 +93,6 @@ export default function Journey() {
     () => windowSessions.reduce((a, s) => a + (s.duration_minutes ?? 0), 0),
     [windowSessions],
   );
-
-  const rank = useMemo(() => {
-    if (totalXp >= 3000) return { title: 'Odyssey Voyager', code: 'STELLAR COMMANDER' };
-    if (totalXp >= 1400) return { title: 'Deep Space Navigator', code: 'ORBITAL PILOT' };
-    if (totalXp >= 600)  return { title: 'Atmosphere Pilot', code: 'ASCENT SPECIALIST' };
-    if (totalXp >= 200)  return { title: 'First Ascent', code: 'EXPEDITION PILOT' };
-    return { title: 'Cadet', code: 'DEPARTURE PHASE' };
-  }, [totalXp]);
 
   const checkpointsWithStatus = useMemo(() => CHECKPOINTS.map((cp, i) => {
     const reached = completedMissions.length >= cp.requiredMissions || totalXp >= cp.requiredXp;
@@ -156,11 +149,12 @@ export default function Journey() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
+            <RankBadge progress={progress} size={32} />
             <span
               className="text-[0.6rem] font-bold tracking-[0.18em] uppercase px-2 py-0.5 rounded"
               style={{ backgroundColor: 'color-mix(in srgb, var(--color-app-mission) 12%, transparent)', color: 'var(--color-app-mission)', border: '1px solid color-mix(in srgb, var(--color-app-mission) 25%, transparent)' }}
             >
-              {rank.code}
+              {progress.rank.title}
             </span>
             <span className="text-[0.65rem] font-mono" style={{ color: 'var(--color-app-text-dim)' }}>
               {totalXp} XP
@@ -216,6 +210,7 @@ export default function Journey() {
       </div>
 
       {/* keyed by window so a picked waypoint does not carry over to a different one */}
+      <div style={{ '--expedition-accent': progress.rank.accent } as React.CSSProperties}>
       <ExpeditionTrail
         key={timeWindow}
         missions={windowMissions}
@@ -223,6 +218,7 @@ export default function Journey() {
         timeWindow={timeWindow}
         hasHistory={completedMissions.length > windowMissions.length}
       />
+      </div>
 
       {/* ─── Quick Stats row beneath the map ─────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
