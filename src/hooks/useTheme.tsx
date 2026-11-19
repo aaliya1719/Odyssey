@@ -1,45 +1,27 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-
-export type Theme = 'dark' | 'light';
+import { getInitialTheme, getSystemMediaQuery, resolveTheme, storeTheme, THEME_STORAGE_KEY } from './theme';
+import type { Theme } from './theme';
 
 interface ThemeContextValue {
   theme: Theme;
   toggleTheme: () => void;
 }
 
-const THEME_STORAGE_KEY = 'odyssey-theme';
-const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getStoredTheme(): Theme | null {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === 'light' || stored === 'dark' ? stored : null;
-}
-
-function getSystemMediaQuery(): MediaQueryList | null {
-  return typeof window.matchMedia === 'function' ? window.matchMedia(DARK_SCHEME_QUERY) : null;
-}
-
-function getSystemTheme(): Theme {
-  const mediaQuery = getSystemMediaQuery();
-  if (!mediaQuery) return 'dark';
-  return mediaQuery.matches ? 'dark' : 'light';
-}
-
-function resolveTheme(): Theme {
-  return getStoredTheme() ?? getSystemTheme();
-}
-
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(resolveTheme);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.removeAttribute('data-theme-initializing');
   }, [theme]);
 
   useEffect(() => {
-    const syncTheme = () => setTheme(resolveTheme());
+    const syncTheme = () => {
+      const nextTheme = resolveTheme();
+      setTheme(currentTheme => currentTheme === nextTheme ? currentTheme : nextTheme);
+    };
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === THEME_STORAGE_KEY || event.key === null) syncTheme();
@@ -59,7 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = () => {
     const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    storeTheme(nextTheme);
     setTheme(nextTheme);
   };
 
