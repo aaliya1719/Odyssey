@@ -21,6 +21,18 @@ Odyssey is an actively developed open-source project. Its core experience is bei
 
 Odyssey is still evolving. Some experiences and integrations may require configuration, and features may change as the project develops.
 
+## Expedition progression
+
+The Journey trail and Passport use `src/lib/progressionEngine.ts` to derive progress from existing records: **50 XP per completed task, 250 XP per completed mission and 10 XP per logged focus minute**. Replayed record IDs count once; the latest dated state wins. XP remains a lifetime projection, including completed records without completion dates. Activity-based streaks and momentum require a valid, non-future timestamp with a timezone.
+
+Ranks unlock at 0, 250, 750, 1800 and 3500 XP, with five SVG badges and matching passport/trail accents. Rest days default to Saturday/Sunday, can be changed on the Passport, and are saved in this browser. Day boundaries use the client's IANA timezone with UTC fallback, including daylight-saving changes.
+
+Only active days advance a streak. Rest days preserve it, and today's unfinished day is not a miss until local midnight. Every seven active days earns one shield (inventory capped at one); a shield preserves the streak across one missed non-rest day. An unprotected miss resets the active-day count and progress toward the next shield. Activity on a rest day still counts.
+
+Momentum is a separate 0–100 score. Each active day contributes up to 50 points for 60 focus minutes, 30 points for three completed missions, and 20 points for activity. That daily contribution decays from the latest activity timestamp with a 48-hour exponential half-life, including rest days; contributions sum and cap at 100. The pure engine accepts `restDays`, `timeZone`, `now` and `halfLifeHours` options. The view refreshes elapsed time each minute and on returning to the app.
+
+**Share Expedition Card** opens a preview and downloads a standalone SVG locally. It includes the explorer name, rank and totals, with no email, task titles, mission details, upload or public URL. Existing achievements, trail time horizons and backup/restore remain available.
+
 ## 🛠 Tech Stack
 
 | Area | Technologies |

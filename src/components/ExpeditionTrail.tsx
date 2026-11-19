@@ -61,9 +61,9 @@ function TrailNode({ kind, label, selected }: { kind: NodeKind; label?: number; 
       style={{
         width: NODE_SIZE,
         height: NODE_SIZE,
-        backgroundColor: kind === 'latest' ? 'var(--color-app-gold)' : 'var(--color-app-surface-raised)',
-        color: kind === 'latest' ? 'var(--color-app-bg)' : done ? 'var(--color-app-gold)' : 'var(--color-app-mission)',
-        border: `2px ${kind === 'next' ? 'dashed' : 'solid'} ${done ? 'var(--color-app-gold)' : kind === 'next' ? 'var(--color-app-mission)' : 'var(--color-app-text-muted)'}`,
+        backgroundColor: kind === 'latest' ? 'var(--expedition-accent, var(--color-app-gold))' : 'var(--color-app-surface-raised)',
+        color: kind === 'latest' ? 'var(--color-app-bg)' : done ? 'var(--expedition-accent, var(--color-app-gold))' : 'var(--color-app-mission)',
+        border: `2px ${kind === 'next' ? 'dashed' : 'solid'} ${done ? 'var(--expedition-accent, var(--color-app-gold))' : kind === 'next' ? 'var(--color-app-mission)' : 'var(--color-app-text-muted)'}`,
         boxShadow: selected
           ? '0 0 0 4px var(--color-app-gold-light)'
           : done ? '0 0 14px var(--color-app-gold-glow)' : 'none',
@@ -72,7 +72,7 @@ function TrailNode({ kind, label, selected }: { kind: NodeKind; label?: number; 
     >
       {kind === 'latest' && (
         <span className="absolute rounded-full animate-pulse pointer-events-none"
-          style={{ inset: -7, border: '1.5px solid var(--color-app-gold)', opacity: 0.6 }} />
+          style={{ inset: -7, border: '1.5px solid var(--expedition-accent, var(--color-app-gold))', opacity: 0.6 }} />
       )}
       {kind === 'camp' && (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
@@ -97,7 +97,7 @@ function CaptionCard({ children, dashed = false, selected = false }: { children:
       className="flex flex-col gap-0.5 w-full rounded-lg px-2.5 py-2 text-center"
       style={{
         backgroundColor: 'var(--color-app-surface)',
-        border: `1px ${dashed ? 'dashed' : 'solid'} ${selected ? 'var(--color-app-gold)' : 'var(--color-app-border)'}`,
+        border: `1px ${dashed ? 'dashed' : 'solid'} ${selected ? 'var(--expedition-accent, var(--color-app-gold))' : 'var(--color-app-border)'}`,
       }}
     >
       {children}
@@ -181,7 +181,7 @@ function DetailPanel({
             </span>
             {isLatest && (
               <span className="text-[0.55rem] font-bold px-1.5 py-0.5 rounded uppercase"
-                style={{ backgroundColor: 'var(--color-app-gold-light)', color: 'var(--color-app-gold)' }}>
+                style={{ backgroundColor: 'var(--color-app-gold-light)', color: 'var(--expedition-accent, var(--color-app-gold))' }}>
                 You are here
               </span>
             )}
@@ -379,7 +379,7 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
     >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-app-mission)' }} />
-        <span className="text-[0.6rem] font-mono tracking-widest uppercase" style={{ color: 'var(--color-app-gold)' }}>
+        <span className="text-[0.6rem] font-mono tracking-widest uppercase" style={{ color: 'var(--expedition-accent, var(--color-app-gold))' }}>
           {telemetry}
         </span>
       </div>
@@ -406,7 +406,7 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
                   strokeLinecap="round"
                   strokeDasharray="1"
                   style={{
-                    stroke: 'var(--color-app-gold)',
+                    stroke: 'var(--expedition-accent, var(--color-app-gold))',
                     strokeDashoffset: drawn ? 0 : 1,
                     transition: 'stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1)',
                     filter: 'drop-shadow(0 0 5px var(--color-app-gold-glow))',
@@ -491,7 +491,7 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
             <li className="relative pl-12 pb-5">
               <span className="absolute left-0 top-0"><TrailNode kind="camp" /></span>
               <span aria-hidden="true" className="absolute top-[34px] bottom-0"
-                style={{ left: NODE_SIZE / 2 - 1, borderLeft: `2px ${total > 0 ? 'solid' : 'dashed'} ${total > 0 ? 'var(--color-app-gold)' : 'var(--color-app-text-dim)'}` }} />
+                style={{ left: NODE_SIZE / 2 - 1, borderLeft: `2px ${total > 0 ? 'solid' : 'dashed'} ${total > 0 ? 'var(--expedition-accent, var(--color-app-gold))' : 'var(--color-app-text-dim)'}` }} />
               <CampCaption />
             </li>
 
@@ -502,7 +502,7 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
                 <li key={wp.mission.id} className="relative pl-12 pb-5">
                   <span className="absolute left-0 top-0"><TrailNode kind={isLatest ? 'latest' : 'done'} label={wp.index} selected={isSelected} /></span>
                   <span aria-hidden="true" className="absolute top-[34px] bottom-0"
-                    style={{ left: NODE_SIZE / 2 - 1, borderLeft: `2px ${isLatest ? 'dashed' : 'solid'} ${isLatest ? 'var(--color-app-text-dim)' : 'var(--color-app-gold)'}` }} />
+                    style={{ left: NODE_SIZE / 2 - 1, borderLeft: `2px ${isLatest ? 'dashed' : 'solid'} ${isLatest ? 'var(--color-app-text-dim)' : 'var(--expedition-accent, var(--color-app-gold))'}` }} />
                   <button
                     type="button"
                     ref={registerButton(wp.index)}
