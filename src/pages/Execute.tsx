@@ -8,6 +8,8 @@ import { safeMissionDuration } from '../lib/missionDuration';
 import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction, zenModeShortcutAction } from '../lib/keyboardShortcuts';
 import { createZenModeController } from '../lib/zenMode';
 import FinishSessionDialog from '../components/FinishSessionDialog';
+import { useSound } from '../hooks/useSound';
+import { chime, reachedZero } from '../lib/chime';
 import { normalizeReflection } from '../lib/reflection';
 import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
 import {
@@ -106,6 +108,18 @@ export default function Execute() {
   const progress       = Math.min(elapsed / plannedSeconds, 1);
   const remaining      = Math.max(0, plannedSeconds - elapsed);
 
+  // ── Audio cues (muted unless the user turned Sound on) ─────────────────────────
+  const { soundEnabled, toggleSound } = useSound();
+
+  // One cue when the planned time runs out. The effects run in this order: the first forgets
+  // the previous reading when the mission changes, the second compares consecutive readings.
+  const previousRemaining = useRef<number | null>(null);
+  useEffect(() => { previousRemaining.current = null; }, [mission?.id]);
+  useEffect(() => {
+    if (running && reachedZero(previousRemaining.current, remaining)) chime.play('timeUp');
+    previousRemaining.current = remaining;
+  }, [remaining, running]);
+
   // ── Helper to find next move after completion ──────────────────────────────────
   const loadNextMove = async (completedMissionId: string, completedTaskId?: string) => {
     try {
@@ -161,13 +175,15 @@ export default function Execute() {
   };
   const stopSoundscape = () => soundscapeControllerRef.current?.fadeOut();
   const handleStart = async () => {
+    chime.unlock();
     try { await timer.start(); await startSoundscape(); } catch (e) { console.error(e); }
   };
   const handlePause = async () => {
-    try { await timer.pause(); stopSoundscape(); } catch (e) { console.error(e); }
+    try { await timer.pause(); chime.play('tick'); stopSoundscape(); } catch (e) { console.error(e); }
   };
   const handleResume = async () => {
-    try { await timer.resume(); await startSoundscape(); } catch (e) { console.error(e); }
+    chime.unlock();
+    try { await timer.resume(); chime.play('tick'); await startSoundscape(); } catch (e) { console.error(e); }
   };
 
   // Finishing a mission always logs the session. The parent task is only closed when the user
@@ -179,6 +195,7 @@ export default function Execute() {
     setDebriefError(false);
     try {
       await timer.complete();
+      chime.play('complete');
       stopSoundscape();
       let m = await missionService.getMission(mission.id);
       const note = normalizeReflection(reflection);
@@ -418,6 +435,26 @@ export default function Execute() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={soundEnabled}
+              aria-label={soundEnabled ? 'Sound on. Turn sound off' : 'Sound off. Turn sound on'}
+              title={soundEnabled ? 'Sound on' : 'Sound off'}
+              className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[0.6rem] font-mono uppercase tracking-wider cursor-pointer bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                color: soundEnabled ? 'var(--color-app-mission)' : 'var(--color-app-text-dim)',
+                borderColor: soundEnabled ? 'var(--color-app-mission)' : 'var(--color-app-border)',
+              }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5L6 9H3v6h3l5 4V5z" />
+                {soundEnabled
+                  ? <path strokeLinecap="round" strokeLinejoin="round" d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" d="M16 9l5 6m0-6l-5 6" />}
+              </svg>
+              {soundEnabled ? 'Sound on' : 'Sound off'}
+            </button>
             <span
               className="text-[0.6rem] font-mono"
               style={{ color: 'var(--color-app-text-dim)' }}
