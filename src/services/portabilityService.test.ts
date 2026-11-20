@@ -518,4 +518,65 @@ describe('portabilityService', () => {
     expect(currentTasks).toHaveLength(1);
     expect(currentTasks[0].title).toBe('Pre-existing Local Task');
   });
+
+  describe('mission reflection round trip', () => {
+    const MISSION_ID = '650e8400-e29b-41d4-a716-446655440001';
+    const OLD_MISSION_ID = '650e8400-e29b-41d4-a716-446655440002';
+    const baseMission = {
+      user_id: 'local-anon',
+      task_id: null,
+      objective: null,
+      next_action: null,
+      planned_minutes: 25,
+      status: 'completed' as const,
+      started_at: null,
+      completed_at: '2026-11-01T10:00:00.000Z',
+      created_at: '2026-11-01T09:00:00.000Z',
+    };
+    const withNote: Mission = { ...baseMission, id: MISSION_ID, title: 'With a debrief', reflection: 'Tests first made the refactor easy.' };
+    const withoutNote: Mission = { ...baseMission, id: OLD_MISSION_ID, title: 'Before debriefs' };
+
+    it('exports the note, and import then restore brings it back (anonymous mode)', async () => {
+      localStore.replaceAll({ tasks: [], missions: [withNote, withoutNote], sessions: [] });
+
+      const exported = await portabilityService.exportUserData();
+      const json = JSON.stringify(exported);
+      const validation = portabilityService.validateImport(json);
+      expect(validation.valid).toBe(true);
+
+      localStore.clearAll();
+      const result = await portabilityService.restoreUserData(validation.data!, 'replace');
+      expect(result.success).toBe(true);
+
+      const restored = localStore.exportAll().missions;
+      expect(restored.find(m => m.title === 'With a debrief')?.reflection).toBe('Tests first made the refactor easy.');
+      expect(restored.find(m => m.title === 'Before debriefs')).not.toHaveProperty('reflection');
+    });
+
+    it('sends the note to Supabase on merge, and no reflection key for notes-free missions', async () => {
+      mockUser = { id: 'supabase-user-123' };
+      const upserted: Record<string, unknown[]> = { tasks: [], missions: [], focus_sessions: [] };
+      mockFrom.mockImplementation((table: string) => ({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+        upsert: vi.fn().mockImplementation((records: unknown[]) => {
+          upserted[table].push(...records);
+          return Promise.resolve({ error: null });
+        }),
+      }));
+
+      const validation = portabilityService.validateImport(JSON.stringify({
+        version: 1, app: 'odyssey', data: { tasks: [], missions: [withNote, withoutNote], sessions: [] },
+      }));
+      expect(validation.valid).toBe(true);
+      const result = await portabilityService.restoreUserData(validation.data!, 'merge');
+      expect(result.success).toBe(true);
+
+      const rows = upserted.missions as Mission[];
+      expect(rows.find(m => m.title === 'With a debrief')?.reflection).toBe('Tests first made the refactor easy.');
+      // an older backup must not start sending a column that may not exist yet
+      expect(rows.find(m => m.title === 'Before debriefs')).not.toHaveProperty('reflection');
+    });
+  });
 });
