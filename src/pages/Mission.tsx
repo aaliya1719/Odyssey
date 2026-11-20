@@ -7,6 +7,7 @@ import type { Task, Mission } from '../types/database';
 import type { CreateMissionInput } from '../services/missionService';
 import { deriveMissionFromTask } from '../lib/missionDerivation';
 import { useMissionTimer } from '../hooks/useMissionTimer';
+import TimeBlockCanvas from '../components/TimeBlockCanvas';
 import { formatDuration } from '../components/FocusTimer';
 import { parseMissionDuration, safeMissionDuration, MAX_MISSION_MINUTES } from '../lib/missionDuration';
 import type {
@@ -1085,6 +1086,17 @@ export default function Mission() {
               ))}
             </div>
           )}
+
+          {/* 2b. ENERGY-AWARE DAY PLANNER */}
+          <TimeBlockCanvas
+            tasks={tasks.filter(t => t.status !== 'completed' && t.status !== 'archived' && !activeMissions.some(m => m.task_id === t.id))}
+            onStart={(t, minutes) => {
+              setPrefillInput(null);
+              setAiMission(null);
+              navigate('/mission', { state: { prefillTask: { ...t, estimated_minutes: minutes } } });
+              setPlanScreen('create_mission');
+            }}
+          />
 
           {/* 3. OTHER TASKS YOU CAN TURN INTO A MISSION */}
           {(() => {
