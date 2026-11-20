@@ -12,6 +12,7 @@ import {
   timeWindowLabel,
 } from '../lib/expeditionTrail';
 import type { TimeWindow, Waypoint } from '../lib/expeditionTrail';
+import { missionDebrief } from '../lib/reflection';
 import { useTheme } from '../hooks/useTheme';
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -155,8 +156,8 @@ function DetailPanel({
   className?: string;
   style?: CSSProperties;
 }) {
-  const { objective, next_action, planned_minutes } = wp.mission;
-  const hasReflection = Boolean(objective?.trim() || next_action?.trim());
+  const { planned_minutes } = wp.mission;
+  const { reflection, objective, nextAction } = missionDebrief(wp.mission);
   return (
     <div
       id="expedition-detail"
@@ -223,23 +224,34 @@ function DetailPanel({
 
       <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-app-border)' }}>
         <p className="text-[0.6rem] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-app-text-muted)' }}>
-          Reflection
+          Debrief
         </p>
-        {hasReflection ? (
-          <div className="flex flex-col gap-1.5 text-xs leading-relaxed" style={{ color: 'var(--color-app-text)' }}>
-            {objective?.trim() && (
-              <p className="m-0"><span style={{ color: 'var(--color-app-text-dim)' }}>Objective: </span>{objective}</p>
-            )}
-            {next_action?.trim() && (
-              <p className="m-0"><span style={{ color: 'var(--color-app-text-dim)' }}>Next action: </span>{next_action}</p>
-            )}
-          </div>
+        {reflection ? (
+          <p className="text-xs leading-relaxed m-0 whitespace-pre-wrap break-words" style={{ color: 'var(--color-app-text)' }}>
+            {reflection}
+          </p>
         ) : (
           <p className="text-xs m-0" style={{ color: 'var(--color-app-text-dim)' }}>
-            No objective or next action was recorded for this mission.
+            No debrief note was written for this mission.
           </p>
         )}
       </div>
+
+      {(objective || nextAction) && (
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-app-border)' }}>
+          <p className="text-[0.6rem] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-app-text-muted)' }}>
+            Mission plan
+          </p>
+          <div className="flex flex-col gap-1.5 text-xs leading-relaxed" style={{ color: 'var(--color-app-text)' }}>
+            {objective && (
+              <p className="m-0"><span style={{ color: 'var(--color-app-text-dim)' }}>Objective: </span>{objective}</p>
+            )}
+            {nextAction && (
+              <p className="m-0"><span style={{ color: 'var(--color-app-text-dim)' }}>Next action: </span>{nextAction}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -480,7 +492,7 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
             />
           ) : total > 0 ? (
             <p className="text-xs text-center mt-3 mb-0" style={{ color: 'var(--color-app-text-dim)' }}>
-              Select a waypoint to see its focus time and reflection.
+              Select a waypoint to see its focus time and debrief.
             </p>
           ) : null}
         </>

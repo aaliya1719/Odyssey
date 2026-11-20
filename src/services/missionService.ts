@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { localMissions } from '../lib/localStore';
 import { isValidMissionDuration } from '../lib/missionDuration';
+import { normalizeReflection } from '../lib/reflection';
 import type { Mission, MissionStatus } from '../types/database';
 
 export interface CreateMissionInput {
@@ -19,6 +20,7 @@ export interface UpdateMissionInput {
   status?: MissionStatus;
   started_at?: string | null;
   completed_at?: string | null;
+  reflection?: string | null;
 }
 
 async function getUser() {
@@ -76,6 +78,8 @@ export const missionService = {
     if ('planned_minutes' in updates && !isValidMissionDuration(updates.planned_minutes)) {
       throw new RangeError('Planned time must be a whole number from 1 to 240 minutes.');
     }
+    // trim and cap the debrief note, and store an empty one as null
+    if ('reflection' in updates) updates = { ...updates, reflection: normalizeReflection(updates.reflection) };
     const user = await getUser();
     if (!user) return Promise.resolve(localMissions.update(id, updates));
 

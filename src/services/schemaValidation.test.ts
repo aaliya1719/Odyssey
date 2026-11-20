@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateOdysseyBackup } from './schemaValidation';
+import { MAX_REFLECTION_LENGTH } from '../lib/reflection';
 
 describe('validateOdysseyBackup', () => {
   it('validates a complete standard export package successfully', () => {
@@ -133,5 +134,56 @@ describe('validateOdysseyBackup', () => {
     expect(result.errors.some(e => e.path === 'sessions[0].started_at')).toBe(true);
     expect(result.errors.some(e => e.path === 'sessions[0].duration_minutes')).toBe(true);
     expect(result.errors.some(e => e.path === 'sessions[0].completed')).toBe(true);
+  });
+
+  describe('mission reflection', () => {
+    const MISSION_ID = 'a1985478-f9b2-4d2b-a8d8-7b9c9f28a6f2';
+    const backupWith = (mission: Record<string, unknown>) => ({
+      version: 1,
+      app: 'odyssey',
+      data: { tasks: [], missions: [{ id: MISSION_ID, title: 'Draft', planned_minutes: 25, status: 'completed', ...mission }], sessions: [] },
+    });
+
+    it('keeps a reflection note, trimmed', () => {
+      const result = validateOdysseyBackup(backupWith({ reflection: '  Pointer arithmetic finally clicked.  ' }));
+      expect(result.valid).toBe(true);
+      expect(result.data?.missions[0].reflection).toBe('Pointer arithmetic finally clicked.');
+    });
+
+    it('caps a very long reflection instead of rejecting the backup', () => {
+      const result = validateOdysseyBackup(backupWith({ reflection: 'x'.repeat(5000) }));
+      expect(result.valid).toBe(true);
+      expect(result.data?.missions[0].reflection).toHaveLength(MAX_REFLECTION_LENGTH);
+    });
+
+    it.each([undefined, null, '', '   \n ', 42, { text: 'nope' }, ['a']])(
+      'leaves the reflection out for %j so old and blank notes import cleanly',
+      value => {
+        const result = validateOdysseyBackup(backupWith({ reflection: value }));
+        expect(result.valid).toBe(true);
+        expect(result.data?.missions[0]).not.toHaveProperty('reflection');
+      },
+    );
+
+    it('still imports a backup written before debriefs existed', () => {
+      const oldBackup = {
+        version: 1,
+        app: 'odyssey',
+        exported_at: '2026-10-01T00:00:00.000Z',
+        data: {
+          tasks: [],
+          missions: [{
+            id: MISSION_ID, user_id: 'u1', task_id: null, title: 'Old mission', objective: 'Do it', next_action: 'Start',
+            planned_minutes: 25, status: 'completed', started_at: null, completed_at: '2026-10-01T00:00:00.000Z',
+            created_at: '2026-10-01T00:00:00.000Z',
+          }],
+          sessions: [],
+        },
+      };
+      const result = validateOdysseyBackup(oldBackup);
+      expect(result.valid).toBe(true);
+      expect(result.data?.missions[0]).toMatchObject({ title: 'Old mission', objective: 'Do it', next_action: 'Start' });
+      expect(result.data?.missions[0]).not.toHaveProperty('reflection');
+    });
   });
 });

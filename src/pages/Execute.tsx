@@ -8,6 +8,7 @@ import { safeMissionDuration } from '../lib/missionDuration';
 import { isEditableShortcutTarget, isTypingShortcutTarget, timerShortcutAction, zenModeShortcutAction } from '../lib/keyboardShortcuts';
 import { createZenModeController } from '../lib/zenMode';
 import FinishSessionDialog from '../components/FinishSessionDialog';
+import { normalizeReflection } from '../lib/reflection';
 import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
 import {
   createSoundscapeController,
@@ -27,6 +28,7 @@ export default function Execute() {
   const navigate  = useNavigate();
   const { shortcutsOpen } = useOutletContext<{ shortcutsOpen: boolean }>();
   const [finishConfirmationOpen, setFinishConfirmationOpen] = useState(false);
+  const [debriefError, setDebriefError] = useState(false);
   const closeFinishConfirmation = useCallback(() => setFinishConfirmationOpen(false), []);
 
   const initialMission = (location.state as { mission?: Mission; linkedTask?: Task } | null)?.mission ?? null;
@@ -170,12 +172,25 @@ export default function Execute() {
 
   // Finishing a mission always logs the session. The parent task is only closed when the user
   // picked "Mark task completed", so a task can span several missions.
-  const handleComplete = async (outcome: TaskOutcome = DEFAULT_TASK_OUTCOME) => {
+  // The debrief note is optional. It is saved right after the mission is marked complete,
+  // and a failed save never undoes the completion.
+  const handleComplete = async (outcome: TaskOutcome = DEFAULT_TASK_OUTCOME, reflection: string | null = null) => {
     if (!mission || ending) return;
+    setDebriefError(false);
     try {
       await timer.complete();
       stopSoundscape();
-      const m = await missionService.getMission(mission.id);
+      let m = await missionService.getMission(mission.id);
+      const note = normalizeReflection(reflection);
+      if (note) {
+        try {
+          m = await missionService.updateMission(m.id, { reflection: note });
+          setMission(m);
+        } catch (noteErr) {
+          console.warn('Could not save the debrief note:', noteErr);
+          setDebriefError(true);
+        }
+      }
       const taskId = resolveLinkedTaskId(linkedTask?.id, m.task_id);
       const closeId = taskIdToComplete(outcome, taskId);
       let closed = false;
@@ -193,10 +208,9 @@ export default function Execute() {
     } catch (e) { console.error(e); }
   };
 
-  // A mission with a parent task asks what to do with the task first; one without just finishes.
+  // Finishing opens the debrief dialog so the user can write a reflection note and choose what to do with any linked task.
   const requestFinish = () => {
-    if (linkedTaskId) setFinishConfirmationOpen(true);
-    else void handleComplete();
+    setFinishConfirmationOpen(true);
   };
 
   // ── Derived display helpers ────────────────────────────────────────────────────
@@ -494,6 +508,16 @@ export default function Execute() {
             {parentTask && !taskClosed && (
               <p className="text-xs mt-1" style={{ color: 'var(--color-app-text-dim)' }}>
                 “{parentTask.title}” stays open for your next session.
+              </p>
+            )}
+            {mission.reflection && (
+              <p className="text-xs mt-2 whitespace-pre-wrap break-words" style={{ color: 'var(--color-app-text)' }}>
+                <span style={{ color: 'var(--color-app-text-dim)' }}>Your debrief: </span>{mission.reflection}
+              </p>
+            )}
+            {debriefError && (
+              <p className="text-xs mt-2" role="status" style={{ color: 'var(--color-status-urgent)' }}>
+                The mission is complete, but your debrief note could not be saved.
               </p>
             )}
           </div>
@@ -913,9 +937,9 @@ export default function Execute() {
         onClose={closeFinishConfirmation}
         hasLinkedTask={Boolean(linkedTaskId)}
         linkedTaskTitle={parentTask?.title ?? null}
-        onConfirm={outcome => {
+        onConfirm={(outcome, reflection) => {
           closeFinishConfirmation();
-          void handleComplete(outcome);
+          void handleComplete(outcome, reflection);
         }}
       />
     </div>
