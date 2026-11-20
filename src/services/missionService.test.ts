@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -9,6 +9,8 @@ vi.mock('../lib/supabase', () => ({
   },
 }));
 
+import { clearLocalStore } from '../lib/localStore';
+import { MAX_REFLECTION_LENGTH } from '../lib/reflection';
 import { missionService } from './missionService';
 import type { CreateMissionInput } from './missionService';
 
@@ -27,5 +29,46 @@ describe('missionService duration validation', () => {
   it('rejects omitted duration at runtime for older callers', async () => {
     await expect(missionService.createMission({ title: 'Test' } as CreateMissionInput))
       .rejects.toThrow(RangeError);
+  });
+});
+
+describe('missionService reflection persistence (local storage)', () => {
+  beforeEach(() => clearLocalStore());
+
+  const newMission = () => missionService.createMission({ title: 'Study DS', planned_minutes: 25 });
+
+  it('starts without a reflection', async () => {
+    const mission = await newMission();
+    expect(mission.reflection ?? null).toBeNull();
+  });
+
+  it('saves a trimmed reflection and reads it back', async () => {
+    const mission = await newMission();
+    const updated = await missionService.updateMission(mission.id, { reflection: '  Trees are just recursion.  ' });
+    expect(updated.reflection).toBe('Trees are just recursion.');
+    expect((await missionService.getMission(mission.id)).reflection).toBe('Trees are just recursion.');
+    expect((await missionService.getMissions())[0].reflection).toBe('Trees are just recursion.');
+  });
+
+  it('caps the reflection length', async () => {
+    const mission = await newMission();
+    const updated = await missionService.updateMission(mission.id, { reflection: 'y'.repeat(MAX_REFLECTION_LENGTH + 500) });
+    expect(updated.reflection).toHaveLength(MAX_REFLECTION_LENGTH);
+  });
+
+  it('stores a blank or null reflection as null, which is how a skipped debrief looks', async () => {
+    const mission = await newMission();
+    await missionService.updateMission(mission.id, { reflection: 'something' });
+    expect((await missionService.updateMission(mission.id, { reflection: '   ' })).reflection).toBeNull();
+    await missionService.updateMission(mission.id, { reflection: null });
+    expect((await missionService.updateMission(mission.id, { reflection: null })).reflection).toBeNull();
+  });
+
+  it('leaves the reflection alone when an update does not mention it', async () => {
+    const mission = await newMission();
+    await missionService.updateMission(mission.id, { reflection: 'keep me' });
+    const completed = await missionService.completeMission(mission.id);
+    expect(completed.status).toBe('completed');
+    expect(completed.reflection).toBe('keep me');
   });
 });

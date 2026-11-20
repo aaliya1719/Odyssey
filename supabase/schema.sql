@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS public.missions (
   status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'active', 'paused', 'completed', 'abandoned')),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reflection TEXT CONSTRAINT missions_reflection_length CHECK (reflection IS NULL OR char_length(reflection) <= 1000)
 );
 
 -- ============================================================================

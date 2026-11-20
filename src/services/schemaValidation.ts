@@ -1,4 +1,5 @@
 import { isValidMissionDuration } from '../lib/missionDuration';
+import { normalizeReflection } from '../lib/reflection';
 import type { Task, Mission, FocusSession, TaskStatus, TaskPriority, MissionStatus } from '../types/database';
 import type { OdysseyExportData, ValidationError, ValidationResult } from '../types/portability';
 import { normalizeTags } from '../lib/hashtags';
@@ -216,6 +217,9 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
       }
     }
 
+    // Backups made before debriefs existed have no reflection. Only carry the key
+    // when there is a real note, so those backups restore exactly as they did before.
+    const reflection = normalizeReflection(item.reflection);
     const nowIso = new Date().toISOString();
     validatedMissions.push({
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : generateUUID(),
@@ -229,6 +233,7 @@ export function validateOdysseyBackup(raw: unknown): ValidationResult {
       started_at: isValidDateString(item.started_at) ? String(item.started_at) : null,
       completed_at: isValidDateString(item.completed_at) ? String(item.completed_at) : null,
       created_at: isValidDateString(item.created_at) ? String(item.created_at) : nowIso,
+      ...(reflection ? { reflection } : {}),
     });
   }
 

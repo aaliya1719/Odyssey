@@ -40,6 +40,8 @@ export interface Mission {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  /** Optional note the user writes when finishing the mission. Absent on older rows. */
+  reflection?: string | null;
 }
 
 export interface FocusSession {
