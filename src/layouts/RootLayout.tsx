@@ -8,6 +8,7 @@ import { missionService } from '../services/missionService';
 import { hasMissionToExecute } from '../lib/executeHighlight';
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog';
 import { globalShortcutAction, isEditableShortcutTarget } from '../lib/keyboardShortcuts';
+import NetworkStatusBanner from '../components/NetworkStatusBanner';
 
 const NAV_LINKS = [
   { to: '/home', label: 'Capture', icon: (
@@ -230,6 +231,7 @@ export default function RootLayout() {
         </button>
       </footer>
       <KeyboardShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      <NetworkStatusBanner />
       <Analytics />
     </div>
   );
