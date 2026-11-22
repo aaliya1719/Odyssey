@@ -8,7 +8,7 @@
  * a cue is scheduled once, when something happens, and the audio thread plays it.
  */
 
-export type CueName = 'complete' | 'tick' | 'timeUp';
+export type CueName = 'complete' | 'tick' | 'timeUp' | 'restOver';
 
 export interface CueNote {
   /** Frequency in Hz. */
@@ -36,6 +36,11 @@ export const CUES: Record<CueName, CueNote[]> = {
   timeUp: [
     { frequency: 783.99, offset: 0, duration: 0.5, gain: 0.12 },
     { frequency: 523.25, offset: 0.22, duration: 0.8, gain: 0.12 },
+  ],
+  // a break has ended: a soft, slow pair, quieter than the time-up cue
+  restOver: [
+    { frequency: 587.33, offset: 0, duration: 0.7, gain: 0.08 },
+    { frequency: 783.99, offset: 0.3, duration: 1.1, gain: 0.08 },
   ],
 };
 
