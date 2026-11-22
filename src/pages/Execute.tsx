@@ -10,6 +10,13 @@ import { createZenModeController } from '../lib/zenMode';
 import FinishSessionDialog from '../components/FinishSessionDialog';
 import { useSound } from '../hooks/useSound';
 import { chime, reachedZero } from '../lib/chime';
+import { useDocumentTitleTimer } from '../hooks/useDocumentTitleTimer';
+import {
+  canAskForPermission,
+  getNotificationApi,
+  notifyTimeUp,
+  requestNotificationPermission,
+} from '../lib/tabAlerts';
 import { normalizeReflection } from '../lib/reflection';
 import { DEFAULT_TASK_OUTCOME, resolveLinkedTaskId, taskIdToComplete } from '../lib/taskFocus';
 import {
@@ -116,9 +123,21 @@ export default function Execute() {
   const previousRemaining = useRef<number | null>(null);
   useEffect(() => { previousRemaining.current = null; }, [mission?.id]);
   useEffect(() => {
-    if (running && reachedZero(previousRemaining.current, remaining)) chime.play('timeUp');
+    if (running && reachedZero(previousRemaining.current, remaining)) {
+      chime.play('timeUp');
+      notifyTimeUp(mission?.title ?? '', { documentHidden: document.hidden, api: getNotificationApi() });
+    }
     previousRemaining.current = remaining;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining, running]);
+
+  // ── Background-tab alerts: live countdown in the tab title + opt-in desktop notification ──
+  useDocumentTitleTimer(remaining, mission?.title ?? '', running);
+  const [notifyPrompt, setNotifyPrompt] = useState(() => canAskForPermission(getNotificationApi()));
+  const enableNotifications = async () => {
+    await requestNotificationPermission(getNotificationApi());
+    setNotifyPrompt(false);
+  };
 
   // ── Helper to find next move after completion ──────────────────────────────────
   const loadNextMove = async (completedMissionId: string, completedTaskId?: string) => {
@@ -483,6 +502,25 @@ export default function Execute() {
             </button>
           </div>
         </div>
+
+        {notifyPrompt && (
+          <div className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs"
+            style={{ border: '1px solid var(--color-app-border)', color: 'var(--color-app-text-muted)' }}>
+            <span>Get a desktop alert when your timer ends while you're in another tab?</span>
+            <span className="flex gap-2">
+              <button type="button" onClick={enableNotifications}
+                className="cursor-pointer rounded px-2 py-1 font-semibold border"
+                style={{ color: 'var(--color-app-mission)', borderColor: 'var(--color-app-border)', background: 'transparent' }}>
+                Enable alerts
+              </button>
+              <button type="button" onClick={() => setNotifyPrompt(false)}
+                className="cursor-pointer rounded px-2 py-1 border-none"
+                style={{ color: 'var(--color-app-text-dim)', background: 'transparent' }}>
+                Not now
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* ── Mission identity ── */}
         <div className="px-5 pt-5 pb-4">
