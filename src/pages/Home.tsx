@@ -13,6 +13,7 @@ import { formatDuration } from '../components/FocusTimer';
 import { formatTaskFocus, taskFocusTotals } from '../lib/taskFocus';
 import { localEndOfDayIso } from '../lib/localDate';
 import { extractHashtags, normalizeTags } from '../lib/hashtags';
+import { filterTasks, PRIORITY_FILTERS, type PriorityFilter } from '../lib/taskFilter';
 import type {
   CaptureContext,
   AIInterpretation,
@@ -942,6 +943,8 @@ export default function Home() {
   const [isCreating,       setIsCreating]       = useState(false);
   const [formError,        setFormError]        = useState<string | null>(null);
   const [activeTag,        setActiveTag]        = useState<string | null>(null);
+  const [searchQuery,      setSearchQuery]      = useState('');
+  const [priorityFilter,   setPriorityFilter]   = useState<PriorityFilter>('all');
 
   useEffect(() => { loadTasks(); }, []);
 
@@ -1091,7 +1094,9 @@ export default function Home() {
   const focusByTask = taskFocusTotals(missions, sessions);
 
   const availableTags = Array.from(new Set(tasks.flatMap(task => task.tags))).sort();
-  const visibleTasks = activeTag ? tasks.filter(task => task.tags.includes(activeTag)) : tasks;
+  const taggedTasks = activeTag ? tasks.filter(task => task.tags.includes(activeTag)) : tasks;
+  const visibleTasks = filterTasks(taggedTasks, searchQuery, priorityFilter);
+  const isSearching = searchQuery.trim() !== '' || priorityFilter !== 'all';
   const activeTasks    = visibleTasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
   const completedTasks = visibleTasks.filter(t => t.status === 'completed');
   const resumableMission = missions.find(m => m.status === 'active' || m.status === 'paused') ?? null;
@@ -1234,6 +1239,55 @@ export default function Home() {
         </div>
       )}
 
+      {tasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4" role="search" aria-label="Search and filter tasks">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search tasks, notes and tags"
+              aria-label="Search tasks"
+              className="w-full rounded-lg px-3 py-2 pr-8 text-sm outline-none border"
+              style={{
+                backgroundColor: 'var(--color-app-surface)',
+                borderColor: 'var(--color-app-border)',
+                color: 'var(--color-app-text)',
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs cursor-pointer border-none bg-transparent"
+                style={{ color: 'var(--color-app-text-dim)' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by priority">
+            {PRIORITY_FILTERS.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={priorityFilter === f.id}
+                onClick={() => setPriorityFilter(f.id)}
+                className="text-[0.65rem] font-semibold px-2 py-1 rounded cursor-pointer border"
+                style={{
+                  backgroundColor: priorityFilter === f.id ? 'color-mix(in srgb, var(--color-app-mission) 14%, transparent)' : 'transparent',
+                  color: priorityFilter === f.id ? 'var(--color-app-mission)' : 'var(--color-app-text-dim)',
+                  borderColor: priorityFilter === f.id ? 'color-mix(in srgb, var(--color-app-mission) 35%, transparent)' : 'var(--color-app-border)',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tasks.length > 0 && availableTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mb-5" aria-label="Filter tasks by tag">
           <span className="text-[0.65rem] font-semibold uppercase tracking-wider mr-1"
@@ -1367,8 +1421,15 @@ export default function Home() {
             <div className="rounded-xl px-5 py-6 text-center"
               style={{ background: 'rgba(8,19,33,0.5)', border: '1px dashed rgba(30,60,100,0.4)' }}>
               <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-                No tasks match {activeTag ? `#${activeTag}` : 'this filter'}.
+                {isSearching ? 'No tasks match your search.' : `No tasks match ${activeTag ? `#${activeTag}` : 'this filter'}.`}
               </p>
+              {isSearching && (
+                <button type="button" onClick={() => { setSearchQuery(''); setPriorityFilter('all'); }}
+                  className="mt-2 mr-3 text-xs cursor-pointer border-none bg-transparent"
+                  style={{ color: 'var(--color-app-mission)' }}>
+                  Clear search
+                </button>
+              )}
               {activeTag && (
                 <button type="button" onClick={() => setActiveTag(null)}
                   className="mt-2 text-xs cursor-pointer border-none bg-transparent"
