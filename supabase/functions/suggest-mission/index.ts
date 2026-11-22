@@ -8,6 +8,7 @@
  *   "interpret"       — parse a free-text brain dump into structured tasks
  *   "plan"            — generate three planning approaches from interpreted tasks
  *   "suggest_mission" — generate the first concrete mission for a chosen approach
+ *   "weekly_retrospective" — summarize privacy-scoped aggregate telemetry
  *
  * Deploy:
  *   supabase functions deploy suggest-mission --no-verify-jwt
@@ -19,6 +20,7 @@
  */
 
 import { isValidMissionDuration } from '../_shared/missionDuration.ts';
+import { parseRetrospectiveDigest, retrospectivePrompt } from '../_shared/retrospective.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -43,11 +45,13 @@ async function callGemini(
   apiKey: string,
   prompt: string,
   maxOutputTokens = 1200,
+  deadline?: AbortSignal,
 ): Promise<{ text: string | null; geminiStatus?: number; geminiError?: string; modelUsed?: string }> {
   let lastStatus = 0;
   let lastError = 'No models tried';
 
   for (const model of CANDIDATE_MODELS) {
+    if (deadline?.aborted) break;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     console.log(`[Gemini] trying ${model}, maxTokens=${maxOutputTokens}, promptLen=${prompt.length}`);
 
@@ -56,7 +60,7 @@ async function callGemini(
       res = await fetch(`${endpoint}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(7000),
+        signal: deadline ? AbortSignal.any([deadline, AbortSignal.timeout(7000)]) : AbortSignal.timeout(7000),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
@@ -572,6 +576,22 @@ Deno.serve(async (req: Request) => {
     }), {
       status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
+  }
+
+  if (operation === 'weekly_retrospective') {
+    const prompt = retrospectivePrompt(body.summary);
+    const headers = { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+    if (!prompt) return new Response(JSON.stringify({ error: 'Expected aggregate retrospective metrics' }), { status: 400, headers });
+    let digest = null;
+    try {
+      const result = await callGemini(apiKey, prompt, 800, AbortSignal.timeout(10_000));
+      if (result.text) digest = parseRetrospectiveDigest(JSON.parse(result.text));
+    } catch {
+      // The client already has a local digest to retain on upstream failure.
+    }
+    return digest
+      ? new Response(JSON.stringify(digest), { headers })
+      : new Response(JSON.stringify({ error: 'AI digest unavailable' }), { status: 502, headers });
   }
 
   if (operation === 'list_models') {

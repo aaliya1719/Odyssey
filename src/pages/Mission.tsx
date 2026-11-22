@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { taskService } from '../services/taskService';
 import { missionService } from '../services/missionService';
+import ExpeditionRetrospective from '../components/ExpeditionRetrospective';
 import { focusService } from '../services/focusService';
 import { generatePlans, suggestMissionFromPlan, suggestMissionForTask } from '../services/aiService';
 import type { Task, Mission, FocusSession } from '../types/database';
@@ -779,6 +780,12 @@ export default function Mission() {
           </button>
         )}
       </div>
+
+      {planScreen === 'list' && !loading && !error && (
+        <div className="mb-5">
+          <ExpeditionRetrospective missions={missions} tasks={tasks} sessions={sessions} />
+        </div>
+      )}
 
       {loadingMessage && (
         <div className="rounded-xl px-5 py-6 mb-8 flex items-center gap-3 app-panel" style={{ border: '1px solid rgba(30,60,100,0.45)' }}>
