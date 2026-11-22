@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import AtmosphericBackground from '../components/AtmosphericBackground';
 import { useAuth } from '../hooks/useAuth';
 import ThemeToggle from '../components/ThemeToggle';
+import DailyFocusTarget from '../components/DailyFocusTarget';
 import { missionService } from '../services/missionService';
 import { hasMissionToExecute } from '../lib/executeHighlight';
 import KeyboardShortcutsDialog from '../components/KeyboardShortcutsDialog';
@@ -165,6 +166,7 @@ export default function RootLayout() {
 
             {/* Right side: auth-aware user area */}
             <div className="flex items-center gap-2">
+              <DailyFocusTarget />
               <ThemeToggle />
               {/* Auth loading — show nothing to avoid flicker */}
               {authLoading ? null : isAuthenticated ? (
