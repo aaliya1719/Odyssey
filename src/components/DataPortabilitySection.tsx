@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import { portabilityService } from '../services/portabilityService';
 import ImportRestoreModal from './ImportRestoreModal';
+import {
+  focusSessionsCsvFilename,
+  formatSessionsCsv,
+  formatSessionsMarkdownTable,
+} from '../lib/telemetryExport';
+import type { FocusSession, Mission, Task } from '../types/database';
 
 interface DataPortabilitySectionProps {
   taskCount: number;
   missionCount: number;
   sessionCount: number;
+  tasks?: Task[];
+  missions?: Mission[];
+  sessions?: FocusSession[];
   onDataRestored: () => void;
 }
 
@@ -13,6 +22,9 @@ export default function DataPortabilitySection({
   taskCount,
   missionCount,
   sessionCount,
+  tasks = [],
+  missions = [],
+  sessions = [],
   onDataRestored,
 }: DataPortabilitySectionProps) {
   const [isExporting, setIsExporting] = useState(false);
@@ -31,6 +43,34 @@ export default function DataPortabilitySection({
       setTimeout(() => setExportMessage(null), 6000);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const flash = (message: string) => {
+    setExportMessage(message);
+    setTimeout(() => setExportMessage(null), 6000);
+  };
+
+  const handleExportCsv = () => {
+    const csv = formatSessionsCsv(sessions, missions, tasks);
+    const filename = focusSessionsCsvFilename();
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    flash(`Saved focus sessions as ${filename}`);
+  };
+
+  const handleCopyMarkdown = async () => {
+    try {
+      await navigator.clipboard.writeText(formatSessionsMarkdownTable(sessions, missions, tasks));
+      flash('Copied focus sessions as a Markdown table');
+    } catch {
+      flash('Could not copy to the clipboard. Check browser permissions.');
     }
   };
 
@@ -130,6 +170,15 @@ export default function DataPortabilitySection({
                 </>
               )}
             </button>
+
+            <div className="flex gap-2">
+              <button onClick={handleExportCsv} disabled={sessions.length === 0} className="flex-1 py-1.5 px-3 rounded-lg text-[0.7rem] font-semibold cursor-pointer border transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-muted)' }}>
+                Export as CSV
+              </button>
+              <button onClick={handleCopyMarkdown} disabled={sessions.length === 0} className="flex-1 py-1.5 px-3 rounded-lg text-[0.7rem] font-semibold cursor-pointer border transition-all disabled:opacity-50 disabled:cursor-not-allowed" style={{ borderColor: 'var(--color-app-border)', color: 'var(--color-app-text-muted)' }}>
+                Copy as Markdown
+              </button>
+            </div>
 
             {exportMessage && (
               <p className="text-[0.7rem] text-center font-medium animate-fade-in" style={{ color: 'var(--color-app-gold)' }}>
