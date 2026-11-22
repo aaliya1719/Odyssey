@@ -33,6 +33,10 @@ Momentum is a separate 0–100 score. Each active day contributes up to 50 point
 
 **Share Expedition Card** opens a preview and downloads a standalone SVG locally. It includes the explorer name, rank and totals, with no email, task titles, mission details, upload or public URL. Existing achievements, trail time horizons and backup/restore remain available.
 
+### Weekly expedition retrospective
+
+Open **Weekly retrospective** on the Mission page for the last seven local calendar days, including today. It summarizes ended focus sessions, completed work, and recurring debrief themes using the history available to the page. The local digest works without Gemini. Choosing **Generate with Gemini** sends only aggregate metrics and predefined obstacle counts through the existing `suggest-mission` Edge Function. Reflection text, task titles, and names are excluded. Deploy an updated copy of that function to enable the optional AI digest.
+
 ## 🛠 Tech Stack
 
 | Area | Technologies |

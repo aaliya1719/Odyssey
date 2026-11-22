@@ -2,7 +2,7 @@
  * Odyssey AI Service
  *
  * Client-side wrapper around the suggest-mission Supabase Edge Function.
- * All three operations (interpret, plan, suggest_mission) route through one
+ * AI operations route through one
  * deployed function. The Gemini API key never touches the browser.
  *
  * Every function returns null on any failure — callers fall back to the
@@ -23,6 +23,8 @@ import { interpret } from '../lib/interpreter';          // deterministic fallba
 import { buildApproaches } from '../lib/planner';         // deterministic fallback
 import { HEAVY_NOTE } from '../lib/planContext';
 import { isValidMissionDuration } from '../lib/missionDuration';
+import { parseRetrospectiveDigest, parseRetrospectiveMetrics } from '../../supabase/functions/_shared/retrospective.ts';
+import type { RetrospectiveDigest, RetrospectiveMetrics } from '../../supabase/functions/_shared/retrospective.ts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -361,4 +363,22 @@ function deterministicMission(ctx: CaptureContext, plan: AIPlan): AIMission {
     reasoning:       `Targeted action for ${plan.name}: "${first.text}".`,
     aiGenerated:     false,
   };
+}
+
+/** Send only validated aggregate metrics after the user explicitly requests a digest. */
+export async function generateRetrospective(
+  metrics: RetrospectiveMetrics,
+  signal: AbortSignal,
+): Promise<RetrospectiveDigest | null> {
+  const summary = parseRetrospectiveMetrics(metrics);
+  if (!summary) return null;
+  try {
+    const { data, error } = await supabase.functions.invoke('suggest-mission', {
+      body: { operation: 'weekly_retrospective', summary },
+      signal,
+    });
+    return error ? null : parseRetrospectiveDigest(data);
+  } catch {
+    return null;
+  }
 }
