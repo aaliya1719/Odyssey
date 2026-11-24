@@ -12,7 +12,9 @@ vi.mock('../lib/supabase', () => ({
 import { clearLocalStore } from '../lib/localStore';
 import { MAX_REFLECTION_LENGTH } from '../lib/reflection';
 import { missionService } from './missionService';
-import type { CreateMissionInput } from './missionService';
+import { supabase } from '../lib/supabase';
+import { localMissions } from '../lib/localStore';
+import type { CreateMissionInput, UpdateMissionInput } from './missionService';
 
 describe('missionService duration validation', () => {
   it.each([null, 0, -1, 1.5, 241, NaN, Infinity])
@@ -70,5 +72,82 @@ describe('missionService reflection persistence (local storage)', () => {
     const completed = await missionService.completeMission(mission.id);
     expect(completed.status).toBe('completed');
     expect(completed.reflection).toBe('keep me');
+  });
+});
+
+
+describe('waypoint debrief and sentiment updates', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({ data: { user: null }, error: null } as never);
+    vi.mocked(supabase.from).mockReset();
+    clearLocalStore();
+  });
+
+  it.each(['flow', 'focused', 'climb', 'fatigued'] as const)('persists %s with the edited note locally', async sentiment => {
+    const mission = await missionService.createMission({ title: 'Waypoint', planned_minutes: 25 });
+    await missionService.completeMission(mission.id);
+    const updated = await missionService.updateMission(mission.id, { reflection: '  corrected note  ', sentiment });
+    expect(updated).toMatchObject({ reflection: 'corrected note', sentiment, status: 'completed' });
+    expect(await missionService.getMission(mission.id)).toEqual(updated);
+  });
+
+  it.each(['energized', '', 'Flow', 1, {}, ['flow']])('rejects invalid sentiment %j before either storage path', async sentiment => {
+    const getUser = vi.mocked(supabase.auth.getUser);
+    getUser.mockClear();
+    const update = vi.spyOn(localMissions, 'update');
+    await expect(missionService.updateMission('id', { sentiment } as UpdateMissionInput)).rejects.toThrow(RangeError);
+    expect(getUser).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('allows clearing a tag and retains it during unrelated updates', async () => {
+    const mission = await missionService.createMission({ title: 'Waypoint', planned_minutes: 25 });
+    await missionService.updateMission(mission.id, { sentiment: 'flow' });
+    expect((await missionService.updateMission(mission.id, { title: 'Renamed' })).sentiment).toBe('flow');
+    expect((await missionService.updateMission(mission.id, { sentiment: null })).sentiment).toBeNull();
+  });
+
+  it('leaves stored debrief unchanged when local persistence fails', async () => {
+    const mission = await missionService.createMission({ title: 'Waypoint', planned_minutes: 25 });
+    await missionService.updateMission(mission.id, { reflection: 'original', sentiment: 'climb' });
+    vi.spyOn(localMissions, 'update').mockImplementationOnce(() => { throw new Error('Storage quota exceeded'); });
+    await expect(missionService.updateMission(mission.id, { reflection: 'new', sentiment: 'flow' })).rejects.toThrow('Storage quota');
+    expect(await missionService.getMission(mission.id)).toMatchObject({ reflection: 'original', sentiment: 'climb' });
+  });
+
+  function cloudUpdate(error: Error | null = null) {
+    const result = { id: 'owned-mission', reflection: 'corrected', sentiment: 'focused' };
+    const single = vi.fn().mockResolvedValue({ data: error ? null : result, error });
+    const select = vi.fn(() => ({ single }));
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({ data: { user: { id: 'owner' } }, error: null } as never);
+    vi.mocked(supabase.from).mockReturnValue({ update } as never);
+    return { update, eq, result };
+  }
+
+  it('sends the normalized note and valid tag together to Supabase', async () => {
+    const { update, eq, result } = cloudUpdate();
+    const updates = { reflection: ' corrected ', sentiment: 'focused' as const };
+    expect(await missionService.updateMission('owned-mission', updates)).toEqual(result);
+    expect(supabase.from).toHaveBeenCalledWith('missions');
+    expect(update).toHaveBeenCalledWith({ reflection: 'corrected', sentiment: 'focused' });
+    expect(eq).toHaveBeenCalledWith('id', 'owned-mission');
+    expect(updates.reflection).toBe(' corrected ');
+  });
+
+  it('caps notes and clears the cloud tag with null', async () => {
+    const { update } = cloudUpdate();
+    await missionService.updateMission('owned-mission', { reflection: 'x'.repeat(1100), sentiment: null });
+    expect(update).toHaveBeenCalledWith({ reflection: 'x'.repeat(1000), sentiment: null });
+  });
+
+  it('propagates a cloud failure without silently writing to guest storage', async () => {
+    cloudUpdate(new Error('column sentiment does not exist'));
+    const localUpdate = vi.spyOn(localMissions, 'update');
+    await expect(missionService.updateMission('owned-mission', { reflection: 'new', sentiment: 'flow' })).rejects.toThrow('column sentiment');
+    expect(localUpdate).not.toHaveBeenCalled();
   });
 });

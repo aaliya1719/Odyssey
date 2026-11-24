@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { localMissions } from '../lib/localStore';
 import { isValidMissionDuration } from '../lib/missionDuration';
-import { normalizeReflection } from '../lib/reflection';
-import type { Mission, MissionStatus } from '../types/database';
+import { normalizeReflection, normalizeSentiment } from '../lib/reflection';
+import type { Mission, MissionSentiment, MissionStatus } from '../types/database';
 
 export interface CreateMissionInput {
   task_id?: string | null;
@@ -21,6 +21,7 @@ export interface UpdateMissionInput {
   started_at?: string | null;
   completed_at?: string | null;
   reflection?: string | null;
+  sentiment?: MissionSentiment | null;
 }
 
 async function getUser() {
@@ -80,6 +81,7 @@ export const missionService = {
     }
     // trim and cap the debrief note, and store an empty one as null
     if ('reflection' in updates) updates = { ...updates, reflection: normalizeReflection(updates.reflection) };
+    if ('sentiment' in updates) updates = { ...updates, sentiment: normalizeSentiment(updates.sentiment) };
     const user = await getUser();
     if (!user) return Promise.resolve(localMissions.update(id, updates));
 

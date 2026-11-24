@@ -54,8 +54,12 @@ CREATE TABLE IF NOT EXISTS public.missions (
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sentiment TEXT CONSTRAINT missions_sentiment_valid CHECK (sentiment IN ('flow', 'focused', 'climb', 'fatigued')),
   reflection TEXT CONSTRAINT missions_reflection_length CHECK (reflection IS NULL OR char_length(reflection) <= 1000)
 );
+
+ALTER TABLE public.missions ADD COLUMN IF NOT EXISTS sentiment TEXT
+  CONSTRAINT missions_sentiment_valid CHECK (sentiment IN ('flow', 'focused', 'climb', 'fatigued'));
 
 -- ============================================================================
 -- 4. FOCUS_SESSIONS TABLE

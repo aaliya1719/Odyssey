@@ -33,6 +33,12 @@ Momentum is a separate 0–100 score. Each active day contributes up to 50 point
 
 **Share Expedition Card** opens a preview and downloads a standalone SVG locally. It includes the explorer name, rank and totals, with no email, task titles, mission details, upload or public URL. Existing achievements, trail time horizons and backup/restore remain available.
 
+### Edit waypoint debriefs
+
+On Journey, inspect a completed waypoint and choose **Edit Note** to revise its debrief (up to 1,000 characters) and optionally select Flow State, Deep Focus, Challenging Ascent or Low Energy. Save updates the trail after persistence succeeds; Cancel leaves the stored mission unchanged. A failed save keeps the draft available for retry. Tags do not change XP or completion dates and survive backup/restore.
+
+Existing Supabase projects must apply `supabase/migrations/202611240001_add_mission_sentiment.sql` before deploying this UI; new projects can use the updated schema. The migration adds only a nullable, constrained column and preserves existing ownership policies. Guest mode stores edits in the browser. Without the migration, cloud saves fail visibly and keep the draft.
+
 ### Weekly expedition retrospective
 
 Open **Weekly retrospective** on the Mission page for the last seven local calendar days, including today. It summarizes ended focus sessions, completed work, and recurring debrief themes using the history available to the page. The local digest works without Gemini. Choosing **Generate with Gemini** sends only aggregate metrics and predefined obstacle counts through the existing `suggest-mission` Edge Function. Reflection text, task titles, and names are excluded. Deploy an updated copy of that function to enable the optional AI digest.

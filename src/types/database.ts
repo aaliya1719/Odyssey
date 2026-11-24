@@ -28,6 +28,8 @@ export interface Task {
 
 export type MissionStatus = 'planned' | 'active' | 'paused' | 'completed' | 'abandoned';
 
+export type MissionSentiment = 'flow' | 'focused' | 'climb' | 'fatigued';
+
 export interface Mission {
   id: string;
   user_id: string;
@@ -42,6 +44,7 @@ export interface Mission {
   created_at: string;
   /** Optional note the user writes when finishing the mission. Absent on older rows. */
   reflection?: string | null;
+  sentiment?: MissionSentiment | null;
 }
 
 export interface FocusSession {

@@ -187,3 +187,23 @@ describe('validateOdysseyBackup', () => {
     });
   });
 });
+
+
+describe('waypoint sentiment backup validation', () => {
+  const backup = (mission: object) => ({ tasks: [], missions: [{ title: 'Waypoint', planned_minutes: 25, ...mission }], sessions: [] });
+  it.each(['flow', 'focused', 'climb', 'fatigued'])('keeps valid %s tags', sentiment => {
+    const result = validateOdysseyBackup(backup({ sentiment }));
+    expect(result.valid).toBe(true);
+    expect(result.data?.missions[0].sentiment).toBe(sentiment);
+  });
+  it.each(['unknown', '', 42])('rejects invalid imported sentiment %j', sentiment => {
+    const result = validateOdysseyBackup(backup({ sentiment }));
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(error => error.path === 'missions[0].sentiment')).toBe(true);
+  });
+  it('keeps older backups without a sentiment key compatible', () => {
+    const result = validateOdysseyBackup(backup({}));
+    expect(result.valid).toBe(true);
+    expect(result.data?.missions[0]).not.toHaveProperty('sentiment');
+  });
+});

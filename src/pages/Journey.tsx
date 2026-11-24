@@ -214,6 +214,7 @@ export default function Journey() {
       <ExpeditionTrail
         key={timeWindow}
         missions={windowMissions}
+        onMissionUpdated={updated => setMissions(current => current.map(mission => mission.id === updated.id ? updated : mission))}
         sessions={sessions}
         timeWindow={timeWindow}
         hasHistory={completedMissions.length > windowMissions.length}

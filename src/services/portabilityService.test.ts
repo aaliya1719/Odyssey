@@ -533,7 +533,7 @@ describe('portabilityService', () => {
       completed_at: '2026-11-01T10:00:00.000Z',
       created_at: '2026-11-01T09:00:00.000Z',
     };
-    const withNote: Mission = { ...baseMission, id: MISSION_ID, title: 'With a debrief', reflection: 'Tests first made the refactor easy.' };
+    const withNote: Mission = { ...baseMission, id: MISSION_ID, title: 'With a debrief', reflection: 'Tests first made the refactor easy.', sentiment: 'flow' };
     const withoutNote: Mission = { ...baseMission, id: OLD_MISSION_ID, title: 'Before debriefs' };
 
     it('exports the note, and import then restore brings it back (anonymous mode)', async () => {
@@ -550,6 +550,7 @@ describe('portabilityService', () => {
 
       const restored = localStore.exportAll().missions;
       expect(restored.find(m => m.title === 'With a debrief')?.reflection).toBe('Tests first made the refactor easy.');
+      expect(restored.find(m => m.title === 'With a debrief')?.sentiment).toBe('flow');
       expect(restored.find(m => m.title === 'Before debriefs')).not.toHaveProperty('reflection');
     });
 
@@ -575,6 +576,7 @@ describe('portabilityService', () => {
 
       const rows = upserted.missions as Mission[];
       expect(rows.find(m => m.title === 'With a debrief')?.reflection).toBe('Tests first made the refactor easy.');
+      expect(rows.find(m => m.title === 'With a debrief')?.sentiment).toBe('flow');
       // an older backup must not start sending a column that may not exist yet
       expect(rows.find(m => m.title === 'Before debriefs')).not.toHaveProperty('reflection');
     });
