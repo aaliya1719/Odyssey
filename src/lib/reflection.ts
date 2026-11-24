@@ -6,7 +6,7 @@
  * the Expedition Trail) goes through these so the rules live in one place.
  */
 
-import type { Mission } from '../types/database';
+import type { Mission, MissionSentiment } from '../types/database';
 
 /** Longest debrief note we keep. Mirrors the CHECK constraint on missions.reflection. */
 export const MAX_REFLECTION_LENGTH = 1000;
@@ -38,4 +38,19 @@ export function missionDebrief(mission: Pick<Mission, 'reflection' | 'objective'
     objective: clean(mission.objective),
     nextAction: clean(mission.next_action),
   };
+}
+
+/** Stored values also match the missions_sentiment_valid database constraint. */
+export const MISSION_SENTIMENTS: { value: MissionSentiment; label: string }[] = [
+  { value: 'flow', label: 'Flow State' },
+  { value: 'focused', label: 'Deep Focus' },
+  { value: 'climb', label: 'Challenging Ascent' },
+  { value: 'fatigued', label: 'Low Energy' },
+];
+
+export function normalizeSentiment(value: unknown): MissionSentiment | null {
+  if (value == null) return null;
+  const option = MISSION_SENTIMENTS.find(option => option.value === value);
+  if (!option) throw new RangeError('Choose a valid expedition sentiment.');
+  return option.value;
 }

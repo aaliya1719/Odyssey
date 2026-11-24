@@ -12,7 +12,8 @@ import {
   timeWindowLabel,
 } from '../lib/expeditionTrail';
 import type { TimeWindow, Waypoint } from '../lib/expeditionTrail';
-import { missionDebrief } from '../lib/reflection';
+import { MAX_REFLECTION_LENGTH, MISSION_SENTIMENTS, missionDebrief } from '../lib/reflection';
+import { missionService } from '../services/missionService';
 import { useTheme } from '../hooks/useTheme';
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -145,9 +146,10 @@ function NextCaption({ first }: { first: boolean }) {
 // ─── Waypoint detail panel ───────────────────────────────────────────────────
 
 function DetailPanel({
-  wp, total, isLatest, panelRef, onClose, onKeyDown, className = '', style,
+  wp, total, isLatest, panelRef, onClose, onKeyDown, onMissionUpdated, className = '', style,
 }: {
   wp: Waypoint;
+  onMissionUpdated: (mission: Mission) => void;
   total: number;
   isLatest: boolean;
   panelRef: RefObject<HTMLDivElement | null>;
@@ -156,6 +158,34 @@ function DetailPanel({
   className?: string;
   style?: CSSProperties;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState('');
+  const [sentiment, setSentiment] = useState(wp.mission.sentiment ?? null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const noteField = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (editing) noteField.current?.focus(); }, [editing]);
+  const stopEditing = () => {
+    setEditing(false);
+    setSaveError(null);
+    requestAnimationFrame(() => editButton.current?.focus());
+  };
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await missionService.updateMission(wp.mission.id, { reflection: note, sentiment });
+      onMissionUpdated(updated);
+      stopEditing();
+    } catch {
+      setSaveError('Could not save your debrief. Your changes are still here. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const sentimentLabel = MISSION_SENTIMENTS.find(option => option.value === wp.mission.sentiment)?.label;
   const { planned_minutes } = wp.mission;
   const { reflection, objective, nextAction } = missionDebrief(wp.mission);
   return (
@@ -226,14 +256,69 @@ function DetailPanel({
         <p className="text-[0.6rem] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-app-text-muted)' }}>
           Debrief
         </p>
-        {reflection ? (
-          <p className="text-xs leading-relaxed m-0 whitespace-pre-wrap break-words" style={{ color: 'var(--color-app-text)' }}>
-            {reflection}
-          </p>
+        <button
+          ref={editButton}
+          type="button"
+          aria-expanded={editing}
+          aria-controls="waypoint-debrief-editor"
+          className="text-xs rounded px-2 py-1 cursor-pointer"
+          style={{ color: 'var(--color-app-text)', border: '1px solid var(--color-app-border)' }}
+          disabled={editing}
+          onClick={() => {
+            setNote(wp.mission.reflection ?? '');
+            setSentiment(wp.mission.sentiment ?? null);
+            setSaveError(null);
+            setEditing(true);
+          }}
+        >Edit Note</button>
+        {editing ? (
+          <form id="waypoint-debrief-editor" className="mt-2 flex flex-col gap-2"
+            aria-busy={saving}
+            onSubmit={event => { event.preventDefault(); void save(); }}
+            onKeyDown={event => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                event.preventDefault();
+                if (!saving) stopEditing();
+              }
+            }}
+          >
+            <label htmlFor="waypoint-debrief-note" className="text-xs">Debrief note</label>
+            <textarea ref={noteField} id="waypoint-debrief-note" value={note} maxLength={MAX_REFLECTION_LENGTH}
+              disabled={saving} onChange={event => setNote(event.target.value)} rows={4}
+              aria-describedby="waypoint-debrief-count" className="w-full text-sm rounded p-2"
+              style={{ color: 'var(--color-app-text)', backgroundColor: 'var(--color-app-surface)', border: '1px solid var(--color-app-border)' }} />
+            <span id="waypoint-debrief-count" className="text-xs">{note.length}/{MAX_REFLECTION_LENGTH} characters</span>
+            <fieldset disabled={saving} className="m-0 p-0 border-0">
+              <legend className="text-xs mb-1">Expedition sentiment</legend>
+              <div className="flex flex-wrap gap-2">
+                {[{ value: null, label: 'No sentiment' }, ...MISSION_SENTIMENTS].map(option => (
+                  <label key={option.value ?? 'none'} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs cursor-pointer"
+                    style={{ border: '1px solid var(--color-app-border)', backgroundColor: sentiment === option.value ? 'var(--color-app-mission-glow)' : 'transparent' }}>
+                    <input type="radio" name="waypoint-sentiment" checked={sentiment === option.value}
+                      onChange={() => setSentiment(option.value)} />{option.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {saveError && <p role="alert" className="text-xs m-0">{saveError}</p>}
+            <div className="flex gap-2">
+              <button type="submit" disabled={saving} className="text-xs rounded px-3 py-1 cursor-pointer"
+                style={{ color: 'var(--color-app-text)', border: '1px solid var(--color-app-mission)' }}>{saving ? 'Saving…' : 'Save'}</button>
+              <button type="button" disabled={saving} onClick={stopEditing} className="text-xs rounded px-3 py-1 cursor-pointer"
+                style={{ color: 'var(--color-app-text)', border: '1px solid var(--color-app-border)' }}>Cancel</button>
+            </div>
+          </form>
         ) : (
-          <p className="text-xs m-0" style={{ color: 'var(--color-app-text-dim)' }}>
-            No debrief note was written for this mission.
-          </p>
+          <>
+            {reflection ? (
+              <p className="text-xs leading-relaxed mt-2 mb-0 whitespace-pre-wrap break-words" style={{ color: 'var(--color-app-text)' }}>{reflection}</p>
+            ) : (
+              <p className="text-xs mt-2 mb-0" style={{ color: 'var(--color-app-text-dim)' }}>No debrief note was written for this mission.</p>
+            )}
+            {sentimentLabel && <p className="inline-block text-xs rounded-full px-2 py-1 mt-2 mb-0"
+              style={{ color: 'var(--color-app-mission)', backgroundColor: 'var(--color-app-mission-glow)' }}>{sentimentLabel}</p>}
+          </>
         )}
       </div>
 
@@ -285,6 +370,7 @@ function BaseCampNotice({ title, body, cta, className = '', style }: { title: st
 interface ExpeditionTrailProps {
   /** Missions to plot. Pass the ones already narrowed to the active time window. */
   missions: Mission[];
+  onMissionUpdated: (mission: Mission) => void;
   /** Sessions used for the per-waypoint focus totals. */
   sessions: FocusSession[];
   /** Active time horizon, only used for the empty state and header text. Defaults to All Time. */
@@ -293,7 +379,7 @@ interface ExpeditionTrailProps {
   hasHistory?: boolean;
 }
 
-export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all', hasHistory = false }: ExpeditionTrailProps) {
+export default function ExpeditionTrail({ missions, onMissionUpdated, sessions, timeWindow = 'all', hasHistory = false }: ExpeditionTrailProps) {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const waypoints = useMemo(() => buildWaypoints(missions, sessions), [missions, sessions]);
@@ -482,6 +568,8 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
 
           {selected ? (
             <DetailPanel
+              key={selected.mission.id}
+              onMissionUpdated={onMissionUpdated}
               wp={selected}
               total={total}
               isLatest={selected.index === total}
@@ -528,6 +616,8 @@ export default function ExpeditionTrail({ missions, sessions, timeWindow = 'all'
                   </button>
                   {isSelected && selected && (
                     <DetailPanel
+                      key={selected.mission.id}
+                      onMissionUpdated={onMissionUpdated}
                       wp={selected}
                       total={total}
                       isLatest={isLatest}
