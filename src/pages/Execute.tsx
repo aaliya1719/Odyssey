@@ -27,6 +27,7 @@ import {
 } from '../lib/soundscape';
 import type { TaskOutcome } from '../lib/taskFocus';
 import type { Mission, Task } from '../types/database';
+import { CadenceSelector, RestInterval } from '../components/FocusCadence';
 
 // XP values mirror Journey.tsx — single source of truth concept
 const XP_PER_MISSION = 250;
@@ -598,6 +599,10 @@ export default function Execute() {
           </div>
         )}
 
+        {mission.status === 'planned' && (
+          <CadenceSelector mission={mission} onMissionChange={setMission} />
+        )}
+
         {/* ── Central Timer & Trajectory Indicator ── */}
         {!isFinished && (
           <div className="px-5 pb-5">
@@ -860,6 +865,8 @@ export default function Execute() {
             </div>
           </div>
         )}
+
+        {isCompleted && <RestInterval />}
 
         {/* ── Post-completion Next Move Recommendation ── */}
         {isCompleted && (
