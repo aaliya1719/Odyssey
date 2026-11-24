@@ -256,6 +256,9 @@ export default function Odyssey() {
         taskCount={tasks.length}
         missionCount={missions.length}
         sessionCount={sessions.length}
+        tasks={tasks}
+        missions={missions}
+        sessions={sessions}
         onDataRestored={() => load(false)}
       />
 
